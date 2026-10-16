@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Create account | Gardevoir{% endblock %}
+{% block content %}
+  <section class="form-card">
+    <h1>Create an account</h1>
+    <p>Join the campus second-hand marketplace.</p>
+    <form method="post">
+      <label for="username">Name</label>
+      <input id="username" name="username" autocomplete="username" required value="{{ request.form.get('username', '') }}">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required value="{{ request.form.get('email', '') }}">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="primary-button" type="submit">Create account</button>
+    </form>
+    <p class="form-footer">Already registered? <a href="{{ url_for('auth.login') }}">Log in</a>.</p>
+  </section>
+{% endblock %}

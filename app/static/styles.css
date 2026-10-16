@@ -1,0 +1,120 @@
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2933;
+  background: #f7f8fa;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+a { color: #174f87; }
+
+.site-header {
+  background: #fff;
+  border-bottom: 1px solid #e4e9ed;
+}
+
+.header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 14px 16px;
+}
+
+.brand {
+  display: block;
+  width: fit-content;
+  color: #1f2933;
+  font-weight: 800;
+  font-size: 1.2rem;
+  text-decoration: none;
+  margin-bottom: 12px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  font-size: .95rem;
+}
+
+nav a, .nav-button {
+  color: #263745;
+  text-decoration: none;
+  font: inherit;
+}
+
+.inline-form { display: inline; margin: 0; }
+
+.nav-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.page-shell {
+  width: min(100% - 32px, 960px);
+  margin: 30px auto;
+}
+
+.form-card, .placeholder {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid #e4e9ed;
+  border-radius: 14px;
+  background: #fff;
+}
+
+h1 { margin: 0 0 10px; font-size: 1.55rem; }
+
+p { line-height: 1.5; }
+
+.form-card form:not(.inline-form) {
+  display: grid;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+label { font-weight: 600; }
+
+input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  margin-bottom: 9px;
+  font: inherit;
+  border: 1px solid #aebbc6;
+  border-radius: 8px;
+}
+
+.primary-button {
+  min-height: 44px;
+  padding: 10px 16px;
+  color: #191c20;
+  background: #ffda00;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.form-footer { margin-bottom: 0; }
+
+.notice {
+  max-width: 480px;
+  margin: 0 auto 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #e8f2fc;
+}
+
+.notice-error { background: #ffe5e5; }
+
+@media (max-width: 480px) {
+  .page-shell { margin-top: 18px; }
+  .form-card, .placeholder { padding: 20px; }
+}

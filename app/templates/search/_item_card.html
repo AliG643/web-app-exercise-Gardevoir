@@ -1,0 +1,17 @@
+{# Temporary search card until Ali's shared card is available. Context: item = public_item(document). #}
+<article class="search-card">
+  <a class="search-item-link" href="{{ url_for('market.item_detail', item_id=item.id) }}">
+    {% if item.image_url %}
+      <img class="search-item-image" src="{{ item.image_url }}" alt="" loading="lazy">
+    {% else %}
+      <div class="search-item-image search-no-photo" aria-hidden="true">No photo</div>
+    {% endif %}
+    <div class="search-card-body">
+      <p class="search-item-category">{{ item.category }} &middot; {{ item.condition }}</p>
+      <h3>{{ item.title }}</h3>
+      <p class="search-item-price">${{ '%.2f'|format(item.price) }}</p>
+      <p class="search-item-description">{{ item.description }}</p>
+      <span class="search-item-details">View item <span aria-hidden="true">&rarr;</span></span>
+    </div>
+  </a>
+</article>

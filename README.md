@@ -6,7 +6,7 @@ Gardevoir helps students buy and sell second-hand items on campus through a simp
 
 ## Current status
 
-The shared Flask and MongoDB foundation, account flow, and route contracts are ready. Item browsing, details, publishing, management, and search are assigned feature modules with temporary pages until their owners implement them. See [team handoff](docs/TEAM_HANDOFF.md).
+The shared Flask and MongoDB foundation, account flow, and route contracts are ready. Public search supports combined keyword, category, and price filters for active items. Item browsing, details, publishing, and management still use temporary pages until their owners implement them. See [team handoff](docs/TEAM_HANDOFF.md).
 
 ## User stories and task boards
 

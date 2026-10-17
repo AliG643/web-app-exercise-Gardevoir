@@ -43,9 +43,11 @@ Use a status change to `deleted` for a seller's delete action, then exclude dele
 | Zihan | `app/search.py` | `GET /search`; query fields `q`, `category`, `min_price`, `max_price`; reuse Ali's card |
 | Yuyang | `app/auth.py`, `app/db.py`, shared shell | Maintain account, database, environment, and shared navigation contracts |
 
-The feature routes currently return temporary pages. Feature owners should replace those responses with their templates and queries. Keep the URL paths and endpoint names stable so the navigation and other modules continue to work. Public routes are browse, detail, and search. Publishing and managing require login.
+Search now renders results from MongoDB. The other feature routes currently return temporary pages; feature owners should replace those responses with their templates and queries. Keep the URL paths and endpoint names stable so the navigation and other modules continue to work. Public routes are browse, detail, and search. Publishing and managing require login.
 
 For the search page, apply all provided filters together and preserve their values in the result form. Use only active items and show an empty state when nothing matches. The URL parameters are exactly `q`, `category`, `min_price`, and `max_price`.
+
+Search keeps the `search.results` endpoint. Keywords match literal, case-insensitive text in the title or description; price bounds are inclusive. Invalid filters return a form with field errors (HTTP 400), and database failures show an availability message (HTTP 503). Until Ali's shared card is available, results use the isolated `search/_item_card.html` partial, with `item` produced by `public_item()`. Replace that include with the agreed shared card during integration. Search styles live in `app/static/search.css`; the shared base provides an optional `extra_head` block for page styles.
 
 ## Suggested integration check
 

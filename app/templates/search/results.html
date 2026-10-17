@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Search items | Gardevoir{% endblock %}
+{% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='search.css') }}">
+{% endblock %}
+{% block content %}
+  <section class="search-page" aria-labelledby="search-title">
+    <h1 id="search-title">Find your next campus bargain</h1>
+    <p class="search-intro">Search second-hand items by keyword, category, or price.</p>
+
+    <form class="search-filters" role="search" action="{{ url_for('search.results') }}" method="get">
+      {% if errors %}
+        <p class="search-error-summary" role="alert">Check the highlighted filters and try again.</p>
+      {% endif %}
+      <div class="search-field search-keyword">
+        <label for="search-q">Keyword</label>
+        <input id="search-q" name="q" type="search" value="{{ filters.q }}"
+               placeholder="Try a textbook, lamp, or keyboard">
+      </div>
+      <div class="search-field search-category">
+        <label for="search-category">Category</label>
+        <select id="search-category" name="category"
+                {% if errors.category %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+          <option value="">All categories</option>
+          {% if filters.category and filters.category not in categories %}
+            <option value="{{ filters.category }}" selected>{{ filters.category }} (unavailable)</option>
+          {% endif %}
+          {% for category in categories %}
+            <option value="{{ category }}" {% if filters.category == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.category %}<p class="search-field-error" id="category-error">{{ errors.category }}</p>{% endif %}
+      </div>
+      <div class="search-prices">
+        <div class="search-field">
+          <label for="search-min-price">Min price ($)</label>
+          <input id="search-min-price" name="min_price" type="text" inputmode="decimal"
+                 value="{{ filters.min_price }}" placeholder="0.00"
+                 {% if errors.min_price %}aria-invalid="true" aria-describedby="min-price-error"{% endif %}>
+          {% if errors.min_price %}<p class="search-field-error" id="min-price-error">{{ errors.min_price }}</p>{% endif %}
+        </div>
+        <div class="search-field">
+          <label for="search-max-price">Max price ($)</label>
+          <input id="search-max-price" name="max_price" type="text" inputmode="decimal"
+                 value="{{ filters.max_price }}" placeholder="Any"
+                 {% if errors.max_price %}aria-invalid="true" aria-describedby="max-price-error"{% endif %}>
+          {% if errors.max_price %}<p class="search-field-error" id="max-price-error">{{ errors.max_price }}</p>{% endif %}
+        </div>
+      </div>
+      <div class="search-actions">
+        <button type="submit" class="primary-button">Search items</button>
+        <a href="{{ url_for('search.results') }}">Clear filters</a>
+      </div>
+    </form>
+
+    {% if service_error %}
+      <div class="search-message" role="alert"><p>{{ service_error }}</p></div>
+    {% elif not errors %}
+      <div class="search-results-heading">
+        <h2>Search results</h2>
+        <p>{{ items|length }} {{ 'item' if items|length == 1 else 'items' }} found</p>
+      </div>
+      {% if items %}
+        <ul class="search-grid">
+          {% for item in items %}
+            <li>{% include "search/_item_card.html" %}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="search-message">
+          {% if has_filters %}
+            <h3>No items match your search</h3>
+            <p>Try a different keyword or a wider price range.</p>
+            <a href="{{ url_for('search.results') }}">View all available items</a>
+          {% else %}
+            <h3>No items are available right now</h3>
+            <p>Check back soon for new campus listings.</p>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

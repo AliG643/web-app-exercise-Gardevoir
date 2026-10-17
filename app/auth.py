@@ -40,6 +40,19 @@ def current_owner_id():
     return ObjectId(current_user.id)
 
 
+def post_login_destination():
+    """Return a requested local page, or fall back to the item list."""
+    target = request.values.get("next", "")
+    if (
+        target.startswith("/")
+        and not target.startswith("//")
+        and "\\" not in target
+        and not any(ord(character) < 32 for character in target)
+    ):
+        return target
+    return url_for("market.items")
+
+
 @auth.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
@@ -76,14 +89,14 @@ def register():
 @auth.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("market.items"))
+        return redirect(post_login_destination())
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         document = get_db().users.find_one({"email": email})
         if document and check_password_hash(document["password_hash"], password):
             login_user(User(document))
-            return redirect(url_for("market.items"))
+            return redirect(post_login_destination())
         flash("Incorrect email or password.", "error")
     return render_template("auth/login.html")
 

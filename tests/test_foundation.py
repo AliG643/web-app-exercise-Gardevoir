@@ -53,6 +53,30 @@ def test_registration_login_and_current_owner(app):
     assert browser.get("/my-items").status_code == 200
 
 
+def test_login_returns_to_requested_page_without_external_redirects(app):
+    browser = app.test_client()
+    browser.post(
+        "/register",
+        data={"username": "Campus Seller", "email": "seller@example.edu", "password": "password123"},
+    )
+    browser.post("/logout")
+
+    login_url = browser.get("/my-items").location
+    assert login_url.startswith("/login?next=")
+    assert browser.get(login_url).status_code == 200
+    response = browser.post(login_url, data={"email": "seller@example.edu", "password": "password123"})
+    assert response.location == "/my-items"
+
+    browser.post("/logout")
+    for target in ("https://example.com", "//example.com", "/\\example.com"):
+        response = browser.post(
+            "/login",
+            data={"email": "seller@example.edu", "password": "password123", "next": target},
+        )
+        assert response.location == "/items"
+        browser.post("/logout")
+
+
 def test_db_commands_create_indexes_and_seed_items(app):
     runner = app.test_cli_runner()
     assert runner.invoke(args=["db-init"]).exit_code == 0

@@ -5,6 +5,9 @@
     <h1>Create an account</h1>
     <p>Join the campus second-hand marketplace.</p>
     <form method="post">
+      {% if request.values.get('next') %}
+        <input type="hidden" name="next" value="{{ request.values['next'] }}">
+      {% endif %}
       <label for="username">Name</label>
       <input id="username" name="username" autocomplete="username" required value="{{ request.form.get('username', '') }}">
       <label for="email">Email</label>
@@ -13,6 +16,6 @@
       <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
       <button class="primary-button" type="submit">Create account</button>
     </form>
-    <p class="form-footer">Already registered? <a href="{{ url_for('auth.login') }}">Log in</a>.</p>
+    <p class="form-footer">Already registered? <a href="{{ url_for('auth.login', next=request.values.get('next')) }}">Log in</a>.</p>
   </section>
 {% endblock %}

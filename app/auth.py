@@ -56,7 +56,7 @@ def post_login_destination():
 @auth.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for("market.items"))
+        return redirect(post_login_destination())
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -82,7 +82,7 @@ def register():
                 flash("An account with that email already exists.", "error")
             else:
                 login_user(User({"_id": result.inserted_id, "username": username, "email": email}))
-                return redirect(url_for("market.items"))
+                return redirect(post_login_destination())
     return render_template("auth/register.html")
 
 

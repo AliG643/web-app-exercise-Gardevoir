@@ -1,0 +1,100 @@
+{% if errors %}
+    <div role = "alert">
+        <p>Please correct the following fields:</p>
+        <ul>
+            {% for name, message in errors.items() %}
+             <li><a href="#{{ name }}">{{ message }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<label for="title">Title *</label>
+<input
+  id="title"
+  name="title"
+  type="text"
+  maxlength="120"
+  value="{{ form_values.title }}"
+  required
+>
+
+<label for = "description">Description*</label>
+<textarea
+  id="description"
+  name="description"
+  maxlength="2000"
+  rows = "5"
+  required
+>{{ form_values.description }}</textarea>
+
+<label for="price">Price (USD) *</label>
+<input
+  id="price"
+  name="price"
+  type="number"
+  min="0"
+  step="any"
+  inputmode="decimal"
+  value="{{ form_values.price }}"
+  required
+>
+<small>Enter a price greater than zero.</small>
+
+<label for="category">Category *</label>
+<select id="category" name="category" required>
+  <option value="">Choose a category</option>
+
+  {% if form_values.category and form_values.category not in categories%}
+  <option value = "{{form_values.category}}" selected>
+    {{form_values.category}}(invalid)
+    </option>
+    {% endif %}
+    
+    {% for category in categories %}
+    <option 
+    value="{{ category }}" 
+    {% if form_values.category == category %}selected{% endif %}
+    >
+        {{ category }}
+    </option>
+    {% endfor %}
+</select>
+
+<label for="condition">Condition *</label>
+<select id="condition" name="condition" required>
+  <option value="">Choose a condition</option>
+
+  {% if form_values.condition and form_values.condition not in conditions %}
+    <option value="{{ form_values.condition }}" selected>
+      {{ form_values.condition }} (invalid)
+    </option>
+  {% endif %}
+
+  {% for condition in conditions %}
+    <option
+      value="{{ condition }}"
+      {% if form_values.condition == condition %}selected{% endif %}
+    >
+      {{ condition }}
+    </option>
+  {% endfor %}
+</select>
+
+<label for="image">Image URL</label>
+<input
+    id="image_url"
+    name="image_url"
+    type="url"
+    value="{{ form_values.image_url }}"
+>   
+
+<lable for = "contact_info">Contact information (optional)</label>
+<input
+    id="contact_info"
+    name="contact_info"
+    type="text"
+    maxlength="200"
+    value="{{ form_values.contact_info }}"
+>
+  

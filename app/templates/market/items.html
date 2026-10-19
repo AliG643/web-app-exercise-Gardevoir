@@ -1,0 +1,39 @@
+{# browse page displaying active products and their information, link to their detail pages#}
+{% extends "base.html" %}
+{% block title %}Marketplace | Gardevoir{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='market.css') }}">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='item-card.css') }}">
+{% endblock %}
+
+{% block content %}
+  <section class="market-page" aria-labelledby="market-title">
+    <h1 id="market-title">Marketplace</h1>
+    <p>Browse second-hand items from your campus community.</p>
+
+    {% if service_error %}
+      <div class="market-message" role="alert">
+        <h2>Marketplace temporarily unavailable</h2>
+        <p>{{ service_error }}</p>
+      </div>
+
+    {% elif items %}
+      <ul class="market-grid">
+        {% for item in items %}
+          <li>
+            {% include "market/_item_card.html" %}
+          </li>
+        {% endfor %}
+      </ul>
+
+    {% else %}
+      <div class="market-message">
+        <h2>No items available yet</h2>
+        <p>Check back soon for new listings.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

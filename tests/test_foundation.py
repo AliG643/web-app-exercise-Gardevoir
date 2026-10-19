@@ -85,3 +85,200 @@ def test_db_commands_create_indexes_and_seed_items(app):
     with app.app_context():
         assert get_db().items.count_documents({"status": "active"}) == 3
         assert get_db().users.index_information()["email_1"]["unique"]
+
+def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
+    browser = app.test_client()
+
+    browser.post("/register", data={
+        "username": "Seller One",
+        "email": "one@example.edu",
+        "password": "password123",
+    })
+    browser.post("/logout")
+
+    browser.post("/register", data={
+        "username": "Seller Two",
+        "email": "two@example.edu",
+        "password": "password123",
+    })
+    browser.post("/logout")
+
+    with app.app_context():
+        db = get_db()
+        first = db.users.find_one({"email": "one@example.edu"})
+        second = db.users.find_one({"email": "two@example.edu"})
+        db.items.insert_many([
+            {"title": "My active item", "price": 10, "status": "active", "owner_id": first["_id"]},
+            {"title": "My sold item", "price": 20, "status": "sold", "owner_id": first["_id"]},
+            {"title": "My deleted item", "price": 30, "status": "deleted", "owner_id": first["_id"]},
+            {"title": "Someone else's item", "price": 40, "status": "active", "owner_id": second["_id"]},
+        ])
+
+    browser.post("/login", data={
+        "email": "one@example.edu",
+        "password": "password123",
+    })
+    page = browser.get("/my-items")
+
+    assert page.status_code == 200
+    assert b"My active item" in page.data
+    assert b"My sold item" in page.data
+    assert b"My deleted item" not in page.data
+    assert b"Someone else's item" not in page.data
+
+
+def test_mark_sold_only_changes_owners_active_item(app):
+    browser = app.test_client()
+    browser.post("/register", data={
+        "username": "Seller One",
+        "email": "one@example.edu",
+        "password": "password123",
+    })
+
+    with app.app_context():
+        db = get_db()
+        owner_id = db.users.find_one({"email": "one@example.edu"})["_id"]
+        other_owner_id = db.users.insert_one({
+            "username": "Seller Two",
+            "email": "two@example.edu",
+            "password_hash": "unused",
+        }).inserted_id
+        own_item_id = db.items.insert_one({
+            "title": "My lamp",
+            "price": 10,
+            "status": "active",
+            "owner_id": owner_id,
+        }).inserted_id
+        other_item_id = db.items.insert_one({
+            "title": "Other lamp",
+            "price": 20,
+            "status": "active",
+            "owner_id": other_owner_id,
+        }).inserted_id
+
+    assert browser.post(f"/items/{own_item_id}/sold").status_code == 400
+
+    page = browser.get("/my-items")
+    assert page.status_code == 200
+    with browser.session_transaction() as session:
+        token = session["manage_csrf_token"]
+
+    data = {"csrf_token": token}
+    assert browser.post(f"/items/{other_item_id}/sold", data=data).status_code == 404
+    assert browser.post(f"/items/{own_item_id}/sold", data=data).status_code == 302
+    assert browser.post(f"/items/{own_item_id}/sold", data=data).status_code == 404
+
+    with app.app_context():
+        assert db.items.find_one({"_id": own_item_id})["status"] == "sold"
+        assert db.items.find_one({"_id": other_item_id})["status"] == "active"
+
+
+def test_edit_item_only_changes_owners_item(app):
+    browser = app.test_client()
+    browser.post("/register", data={
+        "username": "Seller One",
+        "email": "one@example.edu",
+        "password": "password123",
+    })
+
+    with app.app_context():
+        db = get_db()
+        owner_id = db.users.find_one({"email": "one@example.edu"})["_id"]
+        other_owner_id = db.users.insert_one({
+            "username": "Seller Two",
+            "email": "two@example.edu",
+            "password_hash": "unused",
+        }).inserted_id
+        own_item_id = db.items.insert_one({
+            "title": "My lamp",
+            "description": "Old description",
+            "price": 10,
+            "category": "Electronics",
+            "condition": "Good",
+            "status": "active",
+            "owner_id": owner_id,
+        }).inserted_id
+        other_item_id = db.items.insert_one({
+            "title": "Other lamp",
+            "description": "Other description",
+            "price": 20,
+            "category": "Electronics",
+            "condition": "Good",
+            "status": "active",
+            "owner_id": other_owner_id,
+        }).inserted_id
+
+    assert browser.get(f"/items/{other_item_id}/edit").status_code == 404
+    assert browser.get(f"/items/{own_item_id}/edit").status_code == 200
+    with browser.session_transaction() as session:
+        token = session["manage_csrf_token"]
+
+    changes = {
+        "csrf_token": token,
+        "title": "Updated lamp",
+        "description": "Updated description",
+        "price": "15.50",
+        "category": "Electronics",
+        "condition": "Like New",
+        "image_url": "",
+        "contact_info": "",
+        "owner_id": str(other_owner_id),
+        "status": "sold",
+    }
+    assert browser.post(f"/items/{other_item_id}/edit", data=changes).status_code == 404
+    assert browser.post(f"/items/{own_item_id}/edit", data=changes).status_code == 302
+
+    with app.app_context():
+        own_item = db.items.find_one({"_id": own_item_id})
+        other_item = db.items.find_one({"_id": other_item_id})
+        assert own_item["title"] == "Updated lamp"
+        assert own_item["price"] == 15.50
+        assert own_item["owner_id"] == owner_id
+        assert own_item["status"] == "active"
+        assert other_item["title"] == "Other lamp"
+        assert other_item["price"] == 20
+
+
+def test_delete_item_only_hides_owners_item(app):
+    browser = app.test_client()
+    browser.post("/register", data={
+        "username": "Seller One",
+        "email": "one@example.edu",
+        "password": "password123",
+    })
+
+    with app.app_context():
+        db = get_db()
+        owner_id = db.users.find_one({"email": "one@example.edu"})["_id"]
+        other_owner_id = db.users.insert_one({
+            "username": "Seller Two",
+            "email": "two@example.edu",
+            "password_hash": "unused",
+        }).inserted_id
+        own_item_id = db.items.insert_one({
+            "title": "My lamp",
+            "price": 10,
+            "status": "active",
+            "owner_id": owner_id,
+        }).inserted_id
+        other_item_id = db.items.insert_one({
+            "title": "Other lamp",
+            "price": 20,
+            "status": "active",
+            "owner_id": other_owner_id,
+        }).inserted_id
+
+    assert browser.post(f"/items/{own_item_id}/delete").status_code == 400
+    assert browser.get("/my-items").status_code == 200
+    with browser.session_transaction() as session:
+        token = session["manage_csrf_token"]
+
+    data = {"csrf_token": token}
+    assert browser.post(f"/items/{other_item_id}/delete", data=data).status_code == 404
+    assert browser.post(f"/items/{own_item_id}/delete", data=data).status_code == 302
+    assert browser.post(f"/items/{own_item_id}/delete", data=data).status_code == 404
+    assert b"My lamp" not in browser.get("/my-items").data
+
+    with app.app_context():
+        assert db.items.find_one({"_id": own_item_id})["status"] == "deleted"
+        assert db.items.find_one({"_id": other_item_id})["status"] == "active"

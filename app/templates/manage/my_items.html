@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit item" if editing else "My items" }} | Gardevoir{% endblock %}
+
+{% block extra_head %}
+<style>
+  .manage-list { list-style: none; padding: 0; display: grid; gap: 16px; }
+  .manage-item { border-top: 1px solid #e4e9ed; padding-top: 16px; }
+  .manage-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .manage-actions a, .manage-actions button { min-height: 44px; font: inherit; }
+  .manage-actions button { padding: 8px 12px; cursor: pointer; }
+  .manage-edit textarea, .manage-edit select { width: 100%; padding: 10px 12px; font: inherit; }
+  .manage-edit textarea { min-height: 120px; resize: vertical; }
+  .manage-edit select { min-height: 44px; }
+  .manage-edit .field-error { color: #a61b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if editing %}
+<section class="form-card manage-edit">
+  <h1>Edit item</h1>
+
+  {% if errors %}
+    <div role="alert">
+      <p>Please correct these fields:</p>
+      <ul>
+        {% for message in errors.values() %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('manage.edit_item', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <label for="title">Title</label>
+    <input id="title" name="title" type="text" maxlength="120" required value="{{ form_values.title }}">
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description" maxlength="2000" required>{{ form_values.description }}</textarea>
+
+    <label for="price">Price (USD)</label>
+    <input id="price" name="price" type="number" min="0" step="any" required value="{{ form_values.price }}">
+
+    <label for="category">Category</label>
+    <select id="category" name="category" required>
+      <option value="">Choose a category</option>
+      {% for category in categories %}
+        <option value="{{ category }}" {% if form_values.category == category %}selected{% endif %}>{{ category }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="condition">Condition</label>
+    <select id="condition" name="condition" required>
+      <option value="">Choose a condition</option>
+      {% for condition in conditions %}
+        <option value="{{ condition }}" {% if form_values.condition == condition %}selected{% endif %}>{{ condition }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="image_url">Image URL (optional)</label>
+    <input id="image_url" name="image_url" type="url" maxlength="2048" value="{{ form_values.image_url }}">
+
+    <label for="contact_info">Contact information (optional)</label>
+    <input id="contact_info" name="contact_info" type="text" maxlength="200" value="{{ form_values.contact_info }}">
+
+    <button class="primary-button" type="submit">Save changes</button>
+    <a href="{{ url_for('manage.my_items') }}">Cancel</a>
+  </form>
+</section>
+{% else %}
+<section class="form-card">
+  <h1>My items</h1>
+
+  {% if items %}
+    <ul class="manage-list">
+      {% for item in items %}
+        <li class="manage-item">
+          <h2>{{ item.title }}</h2>
+          <p>${{ "%.2f"|format(item.price) }}</p>
+          <p>{{ "Sold" if item.status == "sold" else "For sale" }}</p>
+
+          <div class="manage-actions">
+            <a href="{{ url_for('manage.edit_item', item_id=item.id) }}">Edit</a>
+
+            {% if item.status == "active" %}
+              <form method="post" class="inline-form"
+                    action="{{ url_for('manage.mark_sold', item_id=item.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit">Mark sold</button>
+              </form>
+            {% endif %}
+
+            <form method="post" class="inline-form"
+                  action="{{ url_for('manage.delete_item', item_id=item.id) }}"
+                  onsubmit="return confirm('Delete this item?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit">Delete</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You haven't posted any items yet.</p>
+    <a href="{{ url_for('publish.new_item') }}">Post an item</a>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+<article class="item-card">
+  <a class="item-card-link"
+     href="{{ url_for('market.item_detail', item_id=item.id) }}">
+
+    {% if item.image_url %}
+      <img class="item-card-image"
+           src="{{ item.image_url }}"
+           alt=""
+           loading="lazy">
+    {% else %}
+      <div class="item-card-image item-card-no-image"
+           aria-hidden="true">
+        No photo available
+      </div>
+    {% endif %}
+
+    <div class="item-card-body">
+      <h2 class="item-card-title">{{ item.title }}</h2>
+
+      <p class="item-card-price">
+        ${{ "%.2f"|format(item.price) }}
+      </p>
+
+      <p class="item-card-category">{{ item.category }}</p>
+
+      <p class="item-card-condition">
+        Condition: {{ item.condition }}
+      </p>
+
+      <span class="item-card-details">View details →</span>
+    </div>
+  </a>
+</article>

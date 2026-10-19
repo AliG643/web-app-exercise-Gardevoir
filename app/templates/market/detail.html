@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.title }} | Gardevoir{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='market.css') }}">
+{% endblock %}
+
+{% block content %}
+  <p>
+    <a href="{{ url_for('market.items') }}">
+      ← Back to marketplace
+    </a>
+  </p>
+
+  <article class="item-detail" aria-labelledby="item-title">
+    <header class="item-detail-header">
+      <h1 id="item-title">{{ item.title }}</h1>
+
+      <p class="item-detail-price">
+        ${{ "%.2f"|format(item.price) }}
+      </p>
+    </header>
+
+    <div class="item-detail-layout">
+      <div class="item-detail-media">
+        {% if item.image_url %}
+          <img class="item-detail-image"
+               src="{{ item.image_url }}"
+               alt="{{ item.title }}">
+        {% else %}
+          <div class="item-detail-no-image">
+            <p>No photo available for this item.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="item-detail-information">
+        <section aria-labelledby="information-heading">
+          <h2 id="information-heading">Item information</h2>
+
+          <dl class="item-detail-facts">
+            <dt>Category</dt>
+            <dd>{{ item.category }}</dd>
+
+            <dt>Condition</dt>
+            <dd>{{ item.condition }}</dd>
+          </dl>
+        </section>
+
+        <section aria-labelledby="description-heading">
+          <h2 id="description-heading">Description</h2>
+          <p class="item-detail-description">
+            {{ item.description }}
+          </p>
+        </section>
+
+        <section aria-labelledby="contact-heading">
+          <h2 id="contact-heading">Contact the seller</h2>
+
+          {% if item.contact_info %}
+            <p class="item-detail-contact">
+              {{ item.contact_info }}
+            </p>
+          {% else %}
+            <p>The seller has not provided contact information.</p>
+          {% endif %}
+        </section>
+      </div>
+    </div>
+  </article>
+{% endblock %}

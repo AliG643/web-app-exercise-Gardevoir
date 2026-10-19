@@ -77,6 +77,44 @@ def test_login_returns_to_requested_page_without_external_redirects(app):
         browser.post("/logout")
 
 
+def test_registration_returns_to_page_requested_before_login(app):
+    browser = app.test_client()
+    login_url = browser.get("/items/new").location
+    login_page = browser.get(login_url)
+    assert b'href="/register?next=/items/new"' in login_page.data
+
+    register_page = browser.get("/register?next=/items/new")
+    assert b'name="next" value="/items/new"' in register_page.data
+    assert b'href="/login?next=/items/new"' in register_page.data
+
+    response = browser.post(
+        "/register",
+        data={
+            "username": "New Seller",
+            "email": "new-seller@example.edu",
+            "password": "password123",
+            "next": "/items/new",
+        },
+    )
+    assert response.location == "/items/new"
+    assert browser.get(response.location).status_code == 200
+
+
+@pytest.mark.parametrize("target", ("https://example.com", "//example.com", "/\\example.com"))
+def test_registration_rejects_external_redirects(app, target):
+    browser = app.test_client()
+    response = browser.post(
+        "/register",
+        data={
+            "username": "New Seller",
+            "email": "new-seller@example.edu",
+            "password": "password123",
+            "next": target,
+        },
+    )
+    assert response.location == "/items"
+
+
 def test_db_commands_create_indexes_and_seed_items(app):
     runner = app.test_cli_runner()
     assert runner.invoke(args=["db-init"]).exit_code == 0

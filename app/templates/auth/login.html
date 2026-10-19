@@ -11,6 +11,6 @@
       <input id="password" name="password" type="password" autocomplete="current-password" required>
       <button class="primary-button" type="submit">Log in</button>
     </form>
-    <p class="form-footer">New here? <a href="{{ url_for('auth.register') }}">Create an account</a>.</p>
+    <p class="form-footer">New here? <a href="{{ url_for('auth.register', next=request.values.get('next')) }}">Create an account</a>.</p>
   </section>
 {% endblock %}

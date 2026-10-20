@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Search items | Gardevoir{% endblock %}
 {% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='item-card.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='search.css') }}">
 {% endblock %}
 {% block content %}
@@ -30,6 +31,19 @@
           {% endfor %}
         </select>
         {% if errors.category %}<p class="search-field-error" id="category-error">{{ errors.category }}</p>{% endif %}
+      </div>
+      <div class="search-field">
+        <label for="search-sort">Sort by</label>
+        <select id="search-sort" name="sort"
+                {% if errors.sort %}aria-invalid="true" aria-describedby="sort-error"{% endif %}>
+          {% if sort not in sort_options %}
+            <option value="{{ sort }}" selected>{{ sort }} (unavailable)</option>
+          {% endif %}
+          {% for value, option in sort_options.items() %}
+            <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.sort %}<p class="search-field-error" id="sort-error">{{ errors.sort }}</p>{% endif %}
       </div>
       <div class="search-prices">
         <div class="search-field">

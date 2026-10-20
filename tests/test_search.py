@@ -17,6 +17,8 @@ class SearchPage(HTMLParser):
         super().__init__()
         self.item_links = []
         self.values = {}
+        self.stylesheets = []
+        self.select_name = None
         self.feed(response.get_data(as_text=True))
 
     def handle_starttag(self, tag, attrs):
@@ -25,8 +27,16 @@ class SearchPage(HTMLParser):
             self.item_links.append(attrs["href"])
         if tag == "input" and attrs.get("name"):
             self.values[attrs["name"]] = attrs.get("value", "")
-        if tag == "option" and "selected" in attrs:
-            self.values["category"] = attrs["value"]
+        if tag == "select":
+            self.select_name = attrs.get("name")
+        if tag == "option" and "selected" in attrs and self.select_name:
+            self.values[self.select_name] = attrs["value"]
+        if tag == "link" and attrs.get("rel") == "stylesheet":
+            self.stylesheets.append(attrs["href"])
+
+    def handle_endtag(self, tag):
+        if tag == "select":
+            self.select_name = None
 
 
 @pytest.fixture
@@ -81,6 +91,70 @@ def test_search_is_public_and_shows_only_active_items_newest_first(catalog_app):
         documents, "[CS] textbook", "Wireless keyboard", "Lamp design handbook", "Reading light", "Desk lamp"
     )
     assert b"5 items found" in response.data
+    assert SearchPage(response).values["sort"] == "newest"
+
+
+@pytest.mark.parametrize(("sort", "titles"), [
+    ("newest", ("[CS] textbook", "Wireless keyboard", "Lamp design handbook", "Reading light", "Desk lamp")),
+    ("price_asc", ("Desk lamp", "Lamp design handbook", "Wireless keyboard", "Reading light", "[CS] textbook")),
+    ("price_desc", ("[CS] textbook", "Wireless keyboard", "Reading light", "Lamp design handbook", "Desk lamp")),
+])
+def test_sort_orders_active_items_and_keeps_the_selected_option(catalog_app, sort, titles):
+    app, documents = catalog_app
+    response = app.test_client().get("/search", query_string={"sort": sort})
+    assert response.status_code == 200
+    assert SearchPage(response).item_links == links_for(documents, *titles)
+    assert SearchPage(response).values["sort"] == sort
+    assert b"5 items found" in response.data
+
+
+@pytest.mark.parametrize("sort", ("", "   ", " newest "))
+def test_blank_or_padded_sort_uses_newest_first(catalog_app, sort):
+    app, documents = catalog_app
+    response = app.test_client().get("/search", query_string={"sort": sort})
+    assert response.status_code == 200
+    assert SearchPage(response).values["sort"] == "newest"
+    assert SearchPage(response).item_links == links_for(
+        documents, "[CS] textbook", "Wireless keyboard", "Lamp design handbook", "Reading light", "Desk lamp"
+    )
+
+
+@pytest.mark.parametrize("sort", ("newest", "price_asc", "price_desc"))
+def test_equal_prices_and_timestamps_have_a_stable_order(catalog_app, sort):
+    app, documents = catalog_app
+    lower_id = ObjectId("111111111111111111111111")
+    higher_id = ObjectId("111111111111111111111112")
+    with app.app_context():
+        get_db().items.insert_many([
+            {
+                **documents["Reading light"],
+                "_id": item_id,
+                "title": title,
+                "created_at": datetime(2030, 1, 1, tzinfo=timezone.utc),
+            }
+            for item_id, title in ((lower_id, "First tie"), (higher_id, "Second tie"))
+        ])
+    response = app.test_client().get("/search", query_string={"sort": sort})
+    assert response.status_code == 200
+    links = SearchPage(response).item_links
+    tie_links = [f"/items/{higher_id}", f"/items/{lower_id}"]
+    assert [link for link in links if link in tie_links] == tie_links
+    # Newer items win the price tie even when an older item has a larger ID.
+    assert links.index(tie_links[-1]) < links.index(links_for(documents, "Wireless keyboard")[0])
+
+
+@pytest.mark.parametrize(("sort", "titles"), [
+    ("newest", ("Reading light", "Desk lamp")),
+    ("price_asc", ("Desk lamp", "Reading light")),
+    ("price_desc", ("Reading light", "Desk lamp")),
+])
+def test_sort_combines_with_all_filters_and_keeps_form_values(catalog_app, sort, titles):
+    app, documents = catalog_app
+    filters = {"q": "lamp", "category": "Furniture", "min_price": "12.00", "max_price": "25.00", "sort": sort}
+    response = app.test_client().get("/search", query_string=filters)
+    assert response.status_code == 200
+    assert SearchPage(response).item_links == links_for(documents, *titles)
+    assert SearchPage(response).values == filters
 
 
 @pytest.mark.parametrize(("filters", "titles"), [
@@ -107,10 +181,20 @@ def test_results_keep_filters_and_display_prices_and_detail_links(catalog_app):
     app, documents = catalog_app
     filters = {"q": "lamp", "category": "Furniture", "min_price": "12.00", "max_price": "25.00"}
     response = app.test_client().get("/search", query_string=filters)
-    assert SearchPage(response).values == filters
+    assert SearchPage(response).values == {**filters, "sort": "newest"}
     assert SearchPage(response).item_links == links_for(documents, "Reading light", "Desk lamp")
     assert b"$12.00" in response.data and b"$25.00" in response.data
     assert b"No photo" in response.data
+
+
+def test_search_uses_the_shared_marketplace_card_and_styles(catalog_app):
+    app, _ = catalog_app
+    browser = app.test_client()
+    response = browser.get("/search")
+    assert "/static/item-card.css" in SearchPage(response).stylesheets
+    assert browser.get("/static/item-card.css").status_code == 200
+    assert b'class="item-card"' in response.data
+    assert b'class="search-card"' not in response.data
 
 
 @pytest.mark.parametrize(("filters", "message"), [
@@ -122,6 +206,9 @@ def test_results_keep_filters_and_display_prices_and_detail_links(catalog_app):
     ({"max_price": "-0.01"}, b"Enter a valid price"),
     ({"min_price": "25", "max_price": "12"}, b"Maximum price must be at least"),
     ({"category": "Not a category"}, b"Choose a category from the list"),
+    ({"sort": "unknown"}, b"Choose a sort order from the list"),
+    ({"sort": '<script>alert("sort")</script>'}, b"Choose a sort order from the list"),
+    ({"min_price": "abc", "sort": "price_desc"}, b"Enter a valid price"),
 ])
 def test_invalid_filters_keep_input_and_do_not_query_database(catalog_app, monkeypatch, filters, message):
     app, _ = catalog_app
@@ -139,20 +226,24 @@ def test_invalid_filters_keep_input_and_do_not_query_database(catalog_app, monke
         assert SearchPage(response).values[name] == value
     assert SearchPage(response).item_links == []
     assert b"No items match" not in response.data
+    assert b"<script>" not in response.data
 
 
-def test_no_matches_and_empty_catalog_have_distinct_helpful_messages(catalog_app):
+@pytest.mark.parametrize("sort", ("newest", "price_asc", "price_desc"))
+def test_no_matches_and_empty_catalog_have_distinct_helpful_messages(catalog_app, sort):
     app, _ = catalog_app
     browser = app.test_client()
-    response = browser.get("/search?q=nonexistent")
+    response = browser.get("/search", query_string={"q": "nonexistent", "sort": sort})
     assert response.status_code == 200
     assert b"No items match your search" in response.data
     assert b"0 items found" in response.data
     with app.app_context():
         get_db().items.delete_many({})
-    response = browser.get("/search")
+    response = browser.get("/search", query_string={"sort": sort})
     assert response.status_code == 200
     assert b"No items are available right now" in response.data
+    assert b"No items match your search" not in response.data
+    assert SearchPage(response).values["sort"] == sort
 
 
 def test_database_failure_does_not_look_like_no_matches(catalog_app, monkeypatch):
@@ -163,12 +254,13 @@ def test_database_failure_does_not_look_like_no_matches(catalog_app, monkeypatch
 
     with app.app_context():
         monkeypatch.setattr(get_db().items, "find", unavailable)
-    response = app.test_client().get("/search?q=lamp")
+    response = app.test_client().get("/search", query_string={"q": "lamp", "sort": "price_asc"})
     assert response.status_code == 503
     assert b"Search is temporarily unavailable" in response.data
     assert b"No items match" not in response.data
     assert b"private database connection detail" not in response.data
     assert SearchPage(response).values["q"] == "lamp"
+    assert SearchPage(response).values["sort"] == "price_asc"
 
 
 def test_untrusted_text_is_escaped_and_search_does_not_change_items(catalog_app):

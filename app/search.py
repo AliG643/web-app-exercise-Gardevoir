@@ -1,4 +1,4 @@
-"""Public item search with combined keyword, category, and price filters."""
+"""Public item search with combined filters and selectable result ordering."""
 
 import math
 import re
@@ -11,6 +11,21 @@ from app.item_data import CATEGORIES, public_item
 
 search = Blueprint("search", __name__)
 
+SORT_OPTIONS = {
+    "newest": {
+        "label": "Newest first",
+        "order": [("created_at", -1), ("_id", -1)],
+    },
+    "price_asc": {
+        "label": "Price: low to high",
+        "order": [("price", 1), ("created_at", -1), ("_id", -1)],
+    },
+    "price_desc": {
+        "label": "Price: high to low",
+        "order": [("price", -1), ("created_at", -1), ("_id", -1)],
+    },
+}
+
 
 @search.get("/search")
 def results():
@@ -18,8 +33,12 @@ def results():
         name: request.args.get(name, "").strip()
         for name in ("q", "category", "min_price", "max_price")
     }
+    sort = request.args.get("sort", "newest").strip() or "newest"
     errors = {}
     query = {"status": "active"}
+
+    if sort not in SORT_OPTIONS:
+        errors["sort"] = "Choose a sort order from the list."
 
     if filters["q"]:
         # Treat punctuation as text, rather than allowing user-supplied regexes.
@@ -56,7 +75,7 @@ def results():
     status_code = 400 if errors else 200
     if not errors:
         try:
-            documents = get_db().items.find(query).sort([("created_at", -1), ("_id", -1)])
+            documents = get_db().items.find(query).sort(SORT_OPTIONS[sort]["order"])
             items = [public_item(document) for document in documents]
         except PyMongoError:
             current_app.logger.exception("Unable to load search results")
@@ -67,6 +86,8 @@ def results():
         "search/results.html",
         filters=filters,
         categories=CATEGORIES,
+        sort=sort,
+        sort_options=SORT_OPTIONS,
         errors=errors,
         items=items,
         service_error=service_error,

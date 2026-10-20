@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title%}Post an item | Gardevoir{%endblock%}
+{%block extra_head%}
+<style>
+    .item-form textarea,
+    .item-form select{
+        width: 100%;
+        min-height: 44px;
+        padding: 8px 12px;
+        border: 1px solid #aebbc6;
+        border-radius: 8px;
+        background: white;
+        font: inherit;
+    }
+
+    .item-form textarea{
+        resize: vertical;
+    }
+
+    .item_form small{
+        color: #52606d;
+    }
+</style>
+{%endblock%}
+
+{% block content %}
+<section class = "form-card">
+    <h1>Post an item</h1>
+    <p>Fields marked * are required.</p>
+
+    <form
+        class = "item-form"
+        method = "POST"
+        action = "{{ url_for('publish.new_item') }}"
+    >
+        <input
+      type="hidden"
+      name="csrf_token"
+      value="{{ csrf_token }}"
+    >
+
+    {% include "items/_item_form.html" %}
+
+    <button class="primary-button" type="submit">
+      Post item
+    </button>
+
+    <a href="{{ url_for('market.items') }}">Cancel</a>
+  </form>
+</section>
+{% endblock %}
+

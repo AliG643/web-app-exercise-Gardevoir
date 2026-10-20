@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+
+from bson import ObjectId
 import mongomock
 import pytest
 
@@ -23,12 +26,45 @@ def app():
 
 def test_public_pages_and_owner_routes(app):
     browser = app.test_client()
-    for path in ("/items", "/items/example", "/search?q=lamp"):
+
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+
+        result = get_db().items.insert_one({
+            "title": "Test lamp",
+            "description": "A working desk lamp.",
+            "price": 12.0,
+            "category": "Electronics",
+            "condition": "Good",
+            "image_url": "",
+            "contact_info": "seller@example.edu",
+            "owner_id": ObjectId(),
+            "status": "active",
+            "created_at": now,
+            "updated_at": now,
+        })
+
+        item_id = str(result.inserted_id)
+
+    for path in (
+        "/items",
+        f"/items/{item_id}",
+        "/search?q=lamp",
+    ):
         assert browser.get(path).status_code == 200
-    for path in ("/items/new", "/my-items", "/items/example/edit"):
+
+    assert browser.get("/items/example").status_code == 404
+    assert browser.get(f"/items/{ObjectId()}").status_code == 404
+
+    for path in (
+        "/items/new",
+        "/my-items",
+        f"/items/{item_id}/edit",
+    ):
         response = browser.get(path)
         assert response.status_code == 302
         assert "/login" in response.location
+
     assert parse_object_id("bad") is None
     assert parse_object_id(None) is None
 
@@ -37,19 +73,34 @@ def test_registration_login_and_current_owner(app):
     browser = app.test_client()
     response = browser.post(
         "/register",
-        data={"username": "Campus Seller", "email": "SELLER@example.edu", "password": "password123"},
+        data={
+            "username": "Campus Seller",
+            "email": "SELLER@example.edu",
+            "password": "password123",
+        },
         follow_redirects=True,
     )
+
     assert response.status_code == 200
     assert b"My items" in response.data
+
     with app.app_context():
         user = get_db().users.find_one({"email": "seller@example.edu"})
         assert user is not None
         assert user["password_hash"] != "password123"
+
     assert browser.get("/my-items").status_code == 200
     assert browser.post("/logout").status_code == 302
     assert browser.get("/my-items").status_code == 302
-    assert browser.post("/login", data={"email": "seller@example.edu", "password": "password123"}).status_code == 302
+
+    response = browser.post(
+        "/login",
+        data={
+            "email": "seller@example.edu",
+            "password": "password123",
+        },
+    )
+    assert response.status_code == 302
     assert browser.get("/my-items").status_code == 200
 
 
@@ -57,21 +108,37 @@ def test_login_returns_to_requested_page_without_external_redirects(app):
     browser = app.test_client()
     browser.post(
         "/register",
-        data={"username": "Campus Seller", "email": "seller@example.edu", "password": "password123"},
+        data={
+            "username": "Campus Seller",
+            "email": "seller@example.edu",
+            "password": "password123",
+        },
     )
     browser.post("/logout")
 
     login_url = browser.get("/my-items").location
     assert login_url.startswith("/login?next=")
     assert browser.get(login_url).status_code == 200
-    response = browser.post(login_url, data={"email": "seller@example.edu", "password": "password123"})
+
+    response = browser.post(
+        login_url,
+        data={
+            "email": "seller@example.edu",
+            "password": "password123",
+        },
+    )
     assert response.location == "/my-items"
 
     browser.post("/logout")
+
     for target in ("https://example.com", "//example.com", "/\\example.com"):
         response = browser.post(
             "/login",
-            data={"email": "seller@example.edu", "password": "password123", "next": target},
+            data={
+                "email": "seller@example.edu",
+                "password": "password123",
+                "next": target,
+            },
         )
         assert response.location == "/items"
         browser.post("/logout")
@@ -79,6 +146,7 @@ def test_login_returns_to_requested_page_without_external_redirects(app):
 
 def test_registration_returns_to_page_requested_before_login(app):
     browser = app.test_client()
+
     login_url = browser.get("/items/new").location
     login_page = browser.get(login_url)
     assert b'href="/register?next=/items/new"' in login_page.data
@@ -100,9 +168,13 @@ def test_registration_returns_to_page_requested_before_login(app):
     assert browser.get(response.location).status_code == 200
 
 
-@pytest.mark.parametrize("target", ("https://example.com", "//example.com", "/\\example.com"))
+@pytest.mark.parametrize(
+    "target",
+    ("https://example.com", "//example.com", "/\\example.com"),
+)
 def test_registration_rejects_external_redirects(app, target):
     browser = app.test_client()
+
     response = browser.post(
         "/register",
         data={
@@ -117,12 +189,15 @@ def test_registration_rejects_external_redirects(app, target):
 
 def test_db_commands_create_indexes_and_seed_items(app):
     runner = app.test_cli_runner()
+
     assert runner.invoke(args=["db-init"]).exit_code == 0
     assert runner.invoke(args=["seed-demo"]).exit_code == 0
     assert runner.invoke(args=["seed-demo"]).exit_code == 0
+
     with app.app_context():
         assert get_db().items.count_documents({"status": "active"}) == 3
         assert get_db().users.index_information()["email_1"]["unique"]
+
 
 def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
     browser = app.test_client()
@@ -145,11 +220,32 @@ def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
         db = get_db()
         first = db.users.find_one({"email": "one@example.edu"})
         second = db.users.find_one({"email": "two@example.edu"})
+
         db.items.insert_many([
-            {"title": "My active item", "price": 10, "status": "active", "owner_id": first["_id"]},
-            {"title": "My sold item", "price": 20, "status": "sold", "owner_id": first["_id"]},
-            {"title": "My deleted item", "price": 30, "status": "deleted", "owner_id": first["_id"]},
-            {"title": "Someone else's item", "price": 40, "status": "active", "owner_id": second["_id"]},
+            {
+                "title": "My active item",
+                "price": 10,
+                "status": "active",
+                "owner_id": first["_id"],
+            },
+            {
+                "title": "My sold item",
+                "price": 20,
+                "status": "sold",
+                "owner_id": first["_id"],
+            },
+            {
+                "title": "My deleted item",
+                "price": 30,
+                "status": "deleted",
+                "owner_id": first["_id"],
+            },
+            {
+                "title": "Someone else's item",
+                "price": 40,
+                "status": "active",
+                "owner_id": second["_id"],
+            },
         ])
 
     browser.post("/login", data={
@@ -167,6 +263,7 @@ def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
 
 def test_mark_sold_only_changes_owners_active_item(app):
     browser = app.test_client()
+
     browser.post("/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
@@ -176,17 +273,20 @@ def test_mark_sold_only_changes_owners_active_item(app):
     with app.app_context():
         db = get_db()
         owner_id = db.users.find_one({"email": "one@example.edu"})["_id"]
+
         other_owner_id = db.users.insert_one({
             "username": "Seller Two",
             "email": "two@example.edu",
             "password_hash": "unused",
         }).inserted_id
+
         own_item_id = db.items.insert_one({
             "title": "My lamp",
             "price": 10,
             "status": "active",
             "owner_id": owner_id,
         }).inserted_id
+
         other_item_id = db.items.insert_one({
             "title": "Other lamp",
             "price": 20,
@@ -198,13 +298,21 @@ def test_mark_sold_only_changes_owners_active_item(app):
 
     page = browser.get("/my-items")
     assert page.status_code == 200
+
     with browser.session_transaction() as session:
         token = session["manage_csrf_token"]
 
     data = {"csrf_token": token}
-    assert browser.post(f"/items/{other_item_id}/sold", data=data).status_code == 404
-    assert browser.post(f"/items/{own_item_id}/sold", data=data).status_code == 302
-    assert browser.post(f"/items/{own_item_id}/sold", data=data).status_code == 404
+
+    assert browser.post(
+        f"/items/{other_item_id}/sold", data=data
+    ).status_code == 404
+    assert browser.post(
+        f"/items/{own_item_id}/sold", data=data
+    ).status_code == 302
+    assert browser.post(
+        f"/items/{own_item_id}/sold", data=data
+    ).status_code == 404
 
     with app.app_context():
         assert db.items.find_one({"_id": own_item_id})["status"] == "sold"
@@ -213,6 +321,7 @@ def test_mark_sold_only_changes_owners_active_item(app):
 
 def test_edit_item_only_changes_owners_item(app):
     browser = app.test_client()
+
     browser.post("/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
@@ -222,11 +331,13 @@ def test_edit_item_only_changes_owners_item(app):
     with app.app_context():
         db = get_db()
         owner_id = db.users.find_one({"email": "one@example.edu"})["_id"]
+
         other_owner_id = db.users.insert_one({
             "username": "Seller Two",
             "email": "two@example.edu",
             "password_hash": "unused",
         }).inserted_id
+
         own_item_id = db.items.insert_one({
             "title": "My lamp",
             "description": "Old description",
@@ -236,6 +347,7 @@ def test_edit_item_only_changes_owners_item(app):
             "status": "active",
             "owner_id": owner_id,
         }).inserted_id
+
         other_item_id = db.items.insert_one({
             "title": "Other lamp",
             "description": "Other description",
@@ -248,6 +360,7 @@ def test_edit_item_only_changes_owners_item(app):
 
     assert browser.get(f"/items/{other_item_id}/edit").status_code == 404
     assert browser.get(f"/items/{own_item_id}/edit").status_code == 200
+
     with browser.session_transaction() as session:
         token = session["manage_csrf_token"]
 
@@ -263,12 +376,18 @@ def test_edit_item_only_changes_owners_item(app):
         "owner_id": str(other_owner_id),
         "status": "sold",
     }
-    assert browser.post(f"/items/{other_item_id}/edit", data=changes).status_code == 404
-    assert browser.post(f"/items/{own_item_id}/edit", data=changes).status_code == 302
+
+    assert browser.post(
+        f"/items/{other_item_id}/edit", data=changes
+    ).status_code == 404
+    assert browser.post(
+        f"/items/{own_item_id}/edit", data=changes
+    ).status_code == 302
 
     with app.app_context():
         own_item = db.items.find_one({"_id": own_item_id})
         other_item = db.items.find_one({"_id": other_item_id})
+
         assert own_item["title"] == "Updated lamp"
         assert own_item["price"] == 15.50
         assert own_item["owner_id"] == owner_id
@@ -279,6 +398,7 @@ def test_edit_item_only_changes_owners_item(app):
 
 def test_delete_item_only_hides_owners_item(app):
     browser = app.test_client()
+
     browser.post("/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
@@ -288,17 +408,20 @@ def test_delete_item_only_hides_owners_item(app):
     with app.app_context():
         db = get_db()
         owner_id = db.users.find_one({"email": "one@example.edu"})["_id"]
+
         other_owner_id = db.users.insert_one({
             "username": "Seller Two",
             "email": "two@example.edu",
             "password_hash": "unused",
         }).inserted_id
+
         own_item_id = db.items.insert_one({
             "title": "My lamp",
             "price": 10,
             "status": "active",
             "owner_id": owner_id,
         }).inserted_id
+
         other_item_id = db.items.insert_one({
             "title": "Other lamp",
             "price": 20,
@@ -308,13 +431,21 @@ def test_delete_item_only_hides_owners_item(app):
 
     assert browser.post(f"/items/{own_item_id}/delete").status_code == 400
     assert browser.get("/my-items").status_code == 200
+
     with browser.session_transaction() as session:
         token = session["manage_csrf_token"]
 
     data = {"csrf_token": token}
-    assert browser.post(f"/items/{other_item_id}/delete", data=data).status_code == 404
-    assert browser.post(f"/items/{own_item_id}/delete", data=data).status_code == 302
-    assert browser.post(f"/items/{own_item_id}/delete", data=data).status_code == 404
+
+    assert browser.post(
+        f"/items/{other_item_id}/delete", data=data
+    ).status_code == 404
+    assert browser.post(
+        f"/items/{own_item_id}/delete", data=data
+    ).status_code == 302
+    assert browser.post(
+        f"/items/{own_item_id}/delete", data=data
+    ).status_code == 404
     assert b"My lamp" not in browser.get("/my-items").data
 
     with app.app_context():

@@ -26,12 +26,12 @@ The `items` collection stores the following fields. Keep MongoDB IDs as `ObjectI
 | `image_url` | string | URL supplied by the seller; an empty string is allowed for demo data |
 | `contact_info` | string | Seller contact text |
 | `owner_id` | ObjectId | Set by the server from `current_owner_id()` |
-| `status` | string | `active`, `sold`, or `deleted`; new items start `active` |
+| `status` | string | `active` or `sold`; new items start `active` |
 | `created_at`, `updated_at` | UTC datetime | Set by the server |
 
 The current category defaults are Electronics, Books, Furniture, Clothing, and Other. Condition defaults are New, Like New, Good, and Fair. **The group has not confirmed these options yet**; change them centrally in `app/item_data.py` after agreement.
 
-Use a status change to `deleted` for a seller's delete action, then exclude deleted items from public queries. Public browsing and search should normally show only `active` items. A seller may see their own active and sold items. Check `owner_id == current_owner_id()` before editing, deleting, or marking an item sold.
+Deleting an item permanently removes its document from MongoDB with `delete_one()`. Match both the item ID and `owner_id == current_owner_id()` in the delete query, require a valid CSRF token, and check `deleted_count`; a missing or non-owned item returns 404. Sellers can delete their own active or sold items. The confirmation explains that deletion cannot be undone. Marking an item sold keeps the document and changes its status to `sold`. Public browsing and search show only `active` items; a seller may see their own active and sold items. Check ownership before editing or marking an item sold as well. Legacy documents with `status: "deleted"` remain hidden and are not automatically purged by this change.
 
 ## Route ownership
 
@@ -54,6 +54,7 @@ Search keeps the `search.results` endpoint. Keywords match literal, case-insensi
 1. Run the commands in README and confirm `db-check`, `db-init`, and `seed-demo` succeed.
 2. Register and log in, then post an item. Confirm it appears in the list and search and opens in detail.
 3. Edit it, then confirm the detail and search reflect the changes.
-4. Mark it sold or delete it, then confirm public list and search omit it.
+4. Mark it sold, then confirm public list and search omit it while My items still shows it as sold.
+5. Delete the item, then confirm it is absent from My items, the public list, search, and the MongoDB collection. Opening its old detail or edit URL should return 404; another seller must not be able to delete it.
 
 Use separate feature branches in this one team repository. The initial foundation needs to be merged before teammates pull it. The old React/Go/PostgreSQL project is a reference; the meeting plan says to confirm direct code reuse with the instructor and credit the original authors.

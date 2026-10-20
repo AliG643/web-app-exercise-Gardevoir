@@ -95,7 +95,7 @@
 
             <form method="post" class="inline-form"
                   action="{{ url_for('manage.delete_item', item_id=item.id) }}"
-                  onsubmit="return confirm('Delete this item?');">
+                  onsubmit="return confirm('Permanently delete this item? This cannot be undone.');">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button type="submit">Delete</button>
             </form>

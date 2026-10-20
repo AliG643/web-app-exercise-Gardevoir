@@ -18,6 +18,7 @@
             <a href="{{ url_for('publish.new_item') }}">Post</a>
             <a href="{{ url_for('manage.my_items') }}">My items</a>
             <form action="{{ url_for('auth.logout') }}" method="post" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
               <button type="submit" class="nav-button">Log out</button>
             </form>
           {% else %}

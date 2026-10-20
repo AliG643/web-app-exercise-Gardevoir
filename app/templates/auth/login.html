@@ -5,6 +5,7 @@
     <h1>Welcome back</h1>
     <p>Log in to post and manage your items.</p>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
       <label for="email">Email</label>
       <input id="email" name="email" type="email" autocomplete="email" required value="{{ request.form.get('email', '') }}">
       <label for="password">Password</label>

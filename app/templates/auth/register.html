@@ -5,6 +5,7 @@
     <h1>Create an account</h1>
     <p>Join the campus second-hand marketplace.</p>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
       {% if request.values.get('next') %}
         <input type="hidden" name="next" value="{{ request.values['next'] }}">
       {% endif %}

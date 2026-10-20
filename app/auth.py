@@ -1,7 +1,10 @@
 """Registration and login. Other modules use current_user and current_owner_id."""
 
+from hmac import compare_digest
+from secrets import token_urlsafe
+
 from bson import ObjectId
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from pymongo.errors import DuplicateKeyError
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -22,6 +25,36 @@ class User(UserMixin):
 
 def init_login(app):
     login_manager.init_app(app)
+
+
+def _rotate_auth_csrf_token():
+    session["auth_csrf_token"] = token_urlsafe(32)
+    return session["auth_csrf_token"]
+
+
+def auth_csrf_token():
+    """Keep auth forms usable across tabs until the login state changes."""
+    return session.get("auth_csrf_token") or _rotate_auth_csrf_token()
+
+
+@auth.app_context_processor
+def inject_auth_csrf_token():
+    return {"auth_csrf_token": auth_csrf_token}
+
+
+@auth.before_request
+def require_auth_csrf_token():
+    if request.method != "POST":
+        return
+
+    expected = session.get("auth_csrf_token", "")
+    submitted = request.form.get("csrf_token", "")
+    if (
+        not expected
+        or not submitted
+        or not compare_digest(expected.encode(), submitted.encode())
+    ):
+        abort(400, description="Your form has expired. Refresh the page and try again.")
 
 
 @login_manager.user_loader
@@ -82,6 +115,7 @@ def register():
                 flash("An account with that email already exists.", "error")
             else:
                 login_user(User({"_id": result.inserted_id, "username": username, "email": email}))
+                _rotate_auth_csrf_token()
                 return redirect(post_login_destination())
     return render_template("auth/register.html")
 
@@ -96,6 +130,7 @@ def login():
         document = get_db().users.find_one({"email": email})
         if document and check_password_hash(document["password_hash"], password):
             login_user(User(document))
+            _rotate_auth_csrf_token()
             return redirect(post_login_destination())
         flash("Incorrect email or password.", "error")
     return render_template("auth/login.html")
@@ -105,4 +140,5 @@ def login():
 @login_required
 def logout():
     logout_user()
+    _rotate_auth_csrf_token()
     return redirect(url_for("market.items"))

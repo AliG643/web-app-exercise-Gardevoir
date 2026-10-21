@@ -1,4 +1,4 @@
-"""Seller listing, edit, soft delete, and sold flows."""
+"""Seller listing, edit, hard delete, and sold flows."""
 
 from datetime import datetime, timezone
 from hmac import compare_digest
@@ -161,14 +161,8 @@ def edit_item(item_id):
 @login_required
 def delete_item(item_id):
     _require_csrf_token()
-    result = get_db().items.update_one(
-        _owned_item_filter(item_id),
-        {"$set": {
-            "status": "deleted",
-            "updated_at": datetime.now(timezone.utc),
-        }},
-    )
-    if result.matched_count == 0:
+    result = get_db().items.delete_one(_owned_item_filter(item_id))
+    if result.deleted_count == 0:
         abort(404)
     return redirect(url_for("manage.my_items"))
 

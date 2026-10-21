@@ -16,7 +16,11 @@
       <div class="search-field search-keyword">
         <label for="search-q">Keyword</label>
         <input id="search-q" name="q" type="search" value="{{ filters.q }}"
-               placeholder="Try a textbook, lamp, or keyboard">
+               placeholder="Try a textbook, lamp, or keyboard" maxlength="{{ max_keyword_length }}"
+               aria-describedby="keyword-hint{% if errors.q %} keyword-error{% endif %}"
+               {% if errors.q %}aria-invalid="true"{% endif %}>
+        <p class="search-field-hint" id="keyword-hint">Up to {{ max_keyword_length }} characters.</p>
+        {% if errors.q %}<p class="search-field-error" id="keyword-error">{{ errors.q }}</p>{% endif %}
       </div>
       <div class="search-field search-category">
         <label for="search-category">Category</label>
@@ -63,9 +67,24 @@
       </div>
       <div class="search-actions">
         <button type="submit" class="primary-button">Search items</button>
-        <a href="{{ url_for('search.results') }}">Clear filters</a>
+        <a href="{{ clear_filters_url }}">Clear filters</a>
       </div>
     </form>
+
+    {% if selected_filters %}
+      <div class="search-selected-filters" role="group" aria-labelledby="selected-filters-title">
+        <h2 id="selected-filters-title">Selected filters</h2>
+        <ul class="search-filter-list">
+          {% for filter in selected_filters %}
+            <li>
+              <a class="search-filter-chip" href="{{ filter.remove_url }}" aria-label="Remove {{ filter.label }}">
+                <span>{{ filter.label }}</span><span aria-hidden="true">&times;</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
 
     {% if service_error %}
       <div class="search-message" role="alert"><p>{{ service_error }}</p></div>
@@ -85,7 +104,7 @@
           {% if has_filters %}
             <h3>No items match your search</h3>
             <p>Try a different keyword or a wider price range.</p>
-            <a href="{{ url_for('search.results') }}">View all available items</a>
+            <a href="{{ clear_filters_url }}">View all available items</a>
           {% else %}
             <h3>No items are available right now</h3>
             <p>Check back soon for new campus listings.</p>

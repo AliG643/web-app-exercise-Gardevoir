@@ -36,7 +36,35 @@
 
 .search-page [aria-invalid="true"] { border-color: #a11e25; }
 .search-page .search-field-error { margin: 7px 0 0; color: #a11e25; font-size: .9rem; }
+.search-page .search-field-hint { margin: 7px 0 0; color: #536271; font-size: .9rem; }
 .search-page .search-error-summary { margin: 0; color: #a11e25; }
+
+.search-page .search-selected-filters { margin-top: 22px; }
+.search-page .search-selected-filters h2 { margin: 0 0 10px; font-size: 1rem; }
+.search-page .search-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.search-page .search-filter-list li { min-width: 0; max-width: 100%; }
+.search-page .search-filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #b7cce0;
+  border-radius: 12px;
+  background: #eef5fb;
+  color: #174f87;
+  text-decoration: none;
+}
+.search-page .search-filter-chip:hover { background: #dfedf8; }
+.search-page .search-filter-chip span:first-child { min-width: 0; }
+.search-page .search-filter-chip span[aria-hidden] { flex-shrink: 0; font-size: 1.2rem; }
 
 .search-page .search-results-heading {
   display: flex;

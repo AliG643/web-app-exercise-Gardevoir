@@ -57,6 +57,8 @@ For the search page, apply all provided filters together and preserve their valu
 
 Search keeps the `search.results` endpoint. Keywords match literal, case-insensitive text in the title or description; price bounds are inclusive. Invalid filters return a form with field errors (HTTP 400), and database failures show an availability message (HTTP 503). Results use Ali's shared `market/_item_card.html` partial, with `item` produced by `public_item()`, and load its `app/static/item-card.css` stylesheet. Search form and layout styles live in `app/static/search.css`; the shared base provides an optional `extra_head` block for page styles.
 
+Selected search filters appear as individually removable links. Removing one filter preserves the others and the selected sort; Clear filters and the empty-state View all available items link preserve the sort while removing all filters. Recovery links fall back to `newest` if the supplied sort is invalid and omit unrelated URL parameters. Keywords are limited to 200 characters after trimming surrounding whitespace, with a field error and no database query when the limit is exceeded. Entered values and filter removal links remain available on validation and database errors.
+
 ## Suggested integration check
 
 1. Run the commands in README and confirm `db-check`, `db-init`, and `seed-demo` succeed.

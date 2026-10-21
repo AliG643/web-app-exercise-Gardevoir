@@ -3,13 +3,15 @@
 import math
 import re
 
-from flask import Blueprint, current_app, render_template, request
+from flask import Blueprint, current_app, render_template, request, url_for
 from pymongo.errors import PyMongoError
 
 from app.db import get_db
 from app.item_data import CATEGORIES, public_item
 
 search = Blueprint("search", __name__)
+
+MAX_KEYWORD_LENGTH = 200
 
 SORT_OPTIONS = {
     "newest": {
@@ -40,7 +42,9 @@ def results():
     if sort not in SORT_OPTIONS:
         errors["sort"] = "Choose a sort order from the list."
 
-    if filters["q"]:
+    if len(filters["q"]) > MAX_KEYWORD_LENGTH:
+        errors["q"] = f"Use {MAX_KEYWORD_LENGTH} characters or fewer for the keyword."
+    elif filters["q"]:
         # Treat punctuation as text, rather than allowing user-supplied regexes.
         keyword = {"$regex": re.escape(filters["q"]), "$options": "i"}
         query["$or"] = [{"title": keyword}, {"description": keyword}]
@@ -82,6 +86,20 @@ def results():
             service_error = "Search is temporarily unavailable. Please try again."
             status_code = 503
 
+    # Recovery links keep the chosen ordering and only known filter parameters.
+    link_sort = sort if sort in SORT_OPTIONS else "newest"
+    selected_filters = []
+    for name, label in (
+        ("q", "Keyword"), ("category", "Category"),
+        ("min_price", "Min price ($)"), ("max_price", "Max price ($)"),
+    ):
+        if filters[name]:
+            remaining = {key: value for key, value in filters.items() if key != name and value}
+            selected_filters.append({
+                "label": f"{label}: {filters[name]}",
+                "remove_url": url_for("search.results", sort=link_sort, **remaining),
+            })
+
     return render_template(
         "search/results.html",
         filters=filters,
@@ -92,4 +110,7 @@ def results():
         items=items,
         service_error=service_error,
         has_filters=any(filters.values()),
+        selected_filters=selected_filters,
+        clear_filters_url=url_for("search.results", sort=link_sort),
+        max_keyword_length=MAX_KEYWORD_LENGTH,
     ), status_code

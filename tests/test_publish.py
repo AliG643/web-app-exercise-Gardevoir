@@ -26,10 +26,10 @@ def app(monkeypatch):
 
 
 @pytest.fixture
-def client(app):
+def client(app, auth_post):
     browser = app.test_client()
 
-    response = browser.post("/register", data={
+    response = auth_post(browser, "/register", data={
         "username": "Test Seller",
         "email": "seller@example.edu",
         "password": "password123",

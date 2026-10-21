@@ -11,6 +11,10 @@ This document records the shared contracts for the first sprint. It lets each fe
 - `app/item_data.py` holds common options and `public_item()` to convert MongoDB `_id` and `owner_id` values to strings for templates.
 - `env.example` documents required settings. The real `.env` is ignored by Git.
 
+## Account form CSRF protection
+
+Login, registration, and logout POST requests require a hidden `csrf_token` that matches the current browser session. Render it with `auth_csrf_token()` in account forms and the shared logout form. Missing, empty, forged, or another session's tokens return HTTP 400 before account lookups or login state changes. Refresh the form to recover from a stale token. Successful registration, login, and logout rotate the token; ordinary GET requests and validation errors keep it stable so multiple open forms remain usable until the login state changes. Existing safe `next` redirects are preserved. Publishing and item management retain their own CSRF checks.
+
 ## Item document contract
 
 The `items` collection stores the following fields. Keep MongoDB IDs as `ObjectId` values in the database; convert them to strings only for URLs and templates.

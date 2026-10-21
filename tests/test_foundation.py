@@ -69,9 +69,10 @@ def test_public_pages_and_owner_routes(app):
     assert parse_object_id(None) is None
 
 
-def test_registration_login_and_current_owner(app):
+def test_registration_login_and_current_owner(app, auth_post):
     browser = app.test_client()
-    response = browser.post(
+    response = auth_post(
+        browser,
         "/register",
         data={
             "username": "Campus Seller",
@@ -90,10 +91,11 @@ def test_registration_login_and_current_owner(app):
         assert user["password_hash"] != "password123"
 
     assert browser.get("/my-items").status_code == 200
-    assert browser.post("/logout").status_code == 302
+    assert auth_post(browser, "/logout").status_code == 302
     assert browser.get("/my-items").status_code == 302
 
-    response = browser.post(
+    response = auth_post(
+        browser,
         "/login",
         data={
             "email": "seller@example.edu",
@@ -104,9 +106,10 @@ def test_registration_login_and_current_owner(app):
     assert browser.get("/my-items").status_code == 200
 
 
-def test_login_returns_to_requested_page_without_external_redirects(app):
+def test_login_returns_to_requested_page_without_external_redirects(app, auth_post):
     browser = app.test_client()
-    browser.post(
+    auth_post(
+        browser,
         "/register",
         data={
             "username": "Campus Seller",
@@ -114,13 +117,14 @@ def test_login_returns_to_requested_page_without_external_redirects(app):
             "password": "password123",
         },
     )
-    browser.post("/logout")
+    auth_post(browser, "/logout")
 
     login_url = browser.get("/my-items").location
     assert login_url.startswith("/login?next=")
     assert browser.get(login_url).status_code == 200
 
-    response = browser.post(
+    response = auth_post(
+        browser,
         login_url,
         data={
             "email": "seller@example.edu",
@@ -129,10 +133,11 @@ def test_login_returns_to_requested_page_without_external_redirects(app):
     )
     assert response.location == "/my-items"
 
-    browser.post("/logout")
+    auth_post(browser, "/logout")
 
     for target in ("https://example.com", "//example.com", "/\\example.com"):
-        response = browser.post(
+        response = auth_post(
+            browser,
             "/login",
             data={
                 "email": "seller@example.edu",
@@ -141,10 +146,10 @@ def test_login_returns_to_requested_page_without_external_redirects(app):
             },
         )
         assert response.location == "/items"
-        browser.post("/logout")
+        auth_post(browser, "/logout")
 
 
-def test_registration_returns_to_page_requested_before_login(app):
+def test_registration_returns_to_page_requested_before_login(app, auth_post):
     browser = app.test_client()
 
     login_url = browser.get("/items/new").location
@@ -155,7 +160,8 @@ def test_registration_returns_to_page_requested_before_login(app):
     assert b'name="next" value="/items/new"' in register_page.data
     assert b'href="/login?next=/items/new"' in register_page.data
 
-    response = browser.post(
+    response = auth_post(
+        browser,
         "/register",
         data={
             "username": "New Seller",
@@ -172,10 +178,11 @@ def test_registration_returns_to_page_requested_before_login(app):
     "target",
     ("https://example.com", "//example.com", "/\\example.com"),
 )
-def test_registration_rejects_external_redirects(app, target):
+def test_registration_rejects_external_redirects(app, auth_post, target):
     browser = app.test_client()
 
-    response = browser.post(
+    response = auth_post(
+        browser,
         "/register",
         data={
             "username": "New Seller",
@@ -199,22 +206,22 @@ def test_db_commands_create_indexes_and_seed_items(app):
         assert get_db().users.index_information()["email_1"]["unique"]
 
 
-def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
+def test_my_items_shows_only_current_sellers_active_and_sold_items(app, auth_post):
     browser = app.test_client()
 
-    browser.post("/register", data={
+    auth_post(browser, "/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
         "password": "password123",
     })
-    browser.post("/logout")
+    auth_post(browser, "/logout")
 
-    browser.post("/register", data={
+    auth_post(browser, "/register", data={
         "username": "Seller Two",
         "email": "two@example.edu",
         "password": "password123",
     })
-    browser.post("/logout")
+    auth_post(browser, "/logout")
 
     with app.app_context():
         db = get_db()
@@ -248,7 +255,7 @@ def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
             },
         ])
 
-    browser.post("/login", data={
+    auth_post(browser, "/login", data={
         "email": "one@example.edu",
         "password": "password123",
     })
@@ -261,10 +268,10 @@ def test_my_items_shows_only_current_sellers_active_and_sold_items(app):
     assert b"Someone else's item" not in page.data
 
 
-def test_mark_sold_only_changes_owners_active_item(app):
+def test_mark_sold_only_changes_owners_active_item(app, auth_post):
     browser = app.test_client()
 
-    browser.post("/register", data={
+    auth_post(browser, "/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
         "password": "password123",
@@ -319,10 +326,10 @@ def test_mark_sold_only_changes_owners_active_item(app):
         assert db.items.find_one({"_id": other_item_id})["status"] == "active"
 
 
-def test_edit_item_only_changes_owners_item(app):
+def test_edit_item_only_changes_owners_item(app, auth_post):
     browser = app.test_client()
 
-    browser.post("/register", data={
+    auth_post(browser, "/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
         "password": "password123",
@@ -397,10 +404,10 @@ def test_edit_item_only_changes_owners_item(app):
 
 
 @pytest.mark.parametrize("status", ("active", "sold"))
-def test_delete_item_permanently_removes_only_owners_item(app, status):
+def test_delete_item_permanently_removes_only_owners_item(app, status, auth_post):
     browser = app.test_client()
 
-    browser.post("/register", data={
+    auth_post(browser, "/register", data={
         "username": "Seller One",
         "email": "one@example.edu",
         "password": "password123",

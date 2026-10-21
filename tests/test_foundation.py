@@ -403,7 +403,8 @@ def test_edit_item_only_changes_owners_item(app, auth_post):
         assert other_item["price"] == 20
 
 
-def test_delete_item_only_hides_owners_item(app, auth_post):
+@pytest.mark.parametrize("status", ("active", "sold"))
+def test_delete_item_permanently_removes_only_owners_item(app, status, auth_post):
     browser = app.test_client()
 
     auth_post(browser, "/register", data={
@@ -425,7 +426,7 @@ def test_delete_item_only_hides_owners_item(app, auth_post):
         own_item_id = db.items.insert_one({
             "title": "My lamp",
             "price": 10,
-            "status": "active",
+            "status": status,
             "owner_id": owner_id,
         }).inserted_id
 
@@ -447,6 +448,15 @@ def test_delete_item_only_hides_owners_item(app, auth_post):
     assert browser.post(
         f"/items/{other_item_id}/delete", data=data
     ).status_code == 404
+
+    for invalid_item_id in ("invalid", str(ObjectId())):
+        assert browser.post(
+            f"/items/{invalid_item_id}/delete", data=data
+        ).status_code == 404
+
+    with app.app_context():
+        assert db.items.count_documents({}) == 2
+
     assert browser.post(
         f"/items/{own_item_id}/delete", data=data
     ).status_code == 302
@@ -454,7 +464,12 @@ def test_delete_item_only_hides_owners_item(app, auth_post):
         f"/items/{own_item_id}/delete", data=data
     ).status_code == 404
     assert b"My lamp" not in browser.get("/my-items").data
+    assert b"My lamp" not in browser.get("/items").data
+    assert b"My lamp" not in browser.get("/search?q=lamp").data
+    assert browser.get(f"/items/{own_item_id}").status_code == 404
+    assert browser.get(f"/items/{own_item_id}/edit").status_code == 404
 
     with app.app_context():
-        assert db.items.find_one({"_id": own_item_id})["status"] == "deleted"
+        assert db.items.find_one({"_id": own_item_id}) is None
+        assert db.items.count_documents({}) == 1
         assert db.items.find_one({"_id": other_item_id})["status"] == "active"

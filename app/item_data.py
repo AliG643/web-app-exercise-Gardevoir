@@ -5,7 +5,7 @@ Feature owners can import these constants without editing a shared route file.
 
 CATEGORIES = ("Electronics", "Books", "Furniture", "Clothing", "Other")
 CONDITIONS = ("New", "Like New", "Good", "Fair")
-STATUSES = ("active", "sold", "deleted")
+STATUSES = ("active", "sold")
 
 
 def public_item(document):

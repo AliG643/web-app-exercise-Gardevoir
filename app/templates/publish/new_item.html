@@ -2,26 +2,7 @@
 
 {% block title%}Post an item | Gardevoir{%endblock%}
 {%block extra_head%}
-<style>
-    .item-form textarea,
-    .item-form select{
-        width: 100%;
-        min-height: 44px;
-        padding: 8px 12px;
-        border: 1px solid #aebbc6;
-        border-radius: 8px;
-        background: white;
-        font: inherit;
-    }
-
-    .item-form textarea{
-        resize: vertical;
-    }
-
-    .item_form small{
-        color: #52606d;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">
 {%endblock%}
 
 {% block content %}

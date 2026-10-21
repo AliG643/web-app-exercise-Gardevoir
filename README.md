@@ -6,14 +6,14 @@ Gardevoir helps students buy and sell second-hand items on campus through a simp
 
 ## Current status
 
-The shared Flask and MongoDB foundation, account flow, and route contracts are ready. Public search supports combined keyword, category, and price filters for active items. Item browsing, details, publishing, and management still use temporary pages until their owners implement them. See [team handoff](docs/TEAM_HANDOFF.md).
+The account flow, browsing, item details, publishing, seller management, and search are implemented. Sellers can edit their own listings with the shared publishing form, mark them sold, and permanently delete them. Public search supports combined keyword, category, and price filters plus sorting for active items. See [team handoff](docs/TEAM_HANDOFF.md).
 
 ## User stories and task boards
 
 - [User stories in GitHub Issues](https://github.com/software-students-fall2026/web-app-exercise-Gardevoir/issues)
 - [Sprint task boards in GitHub Projects](https://github.com/software-students-fall2026/web-app-exercise-Gardevoir/projects)
 
-The team still needs to enable Issues and create the stories and two sprint boards in GitHub.
+Issues are enabled. The team still needs to record its user stories and maintain the two sprint boards in GitHub.
 
 ## Run locally
 

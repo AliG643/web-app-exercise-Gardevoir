@@ -43,13 +43,15 @@ Deleting an item permanently removes its document from MongoDB with `delete_one(
 | --- | --- | --- |
 | Ali | `app/market.py` | `GET /items`, `GET /items/<item_id>`; create a reusable item card template for list and search |
 | Yvonne | `app/publish.py` | `GET/POST /items/new`; create a reusable item form template for publish and edit |
-| Sirius | `app/manage.py` | `GET /my-items`, `GET/POST /items/<item_id>/edit`, `POST /items/<item_id>/delete`, `POST /items/<item_id>/sold`; reuse Yvonne's form |
+| Sirius | `app/manage.py` | `GET /my-items`, `GET/POST /items/<item_id>/edit`, `POST /items/<item_id>/delete`, `POST /items/<item_id>/sold`, `POST /items/<item_id>/relist`; reuse Yvonne's form |
 | Zihan | `app/search.py` | `GET /search`; query fields `q`, `category`, `min_price`, `max_price`; reuse Ali's card |
 | Yuyang | `app/auth.py`, `app/db.py`, shared shell | Maintain account, database, environment, and shared navigation contracts |
 
 Browse, detail, search, publishing, and seller management now render their implemented pages with MongoDB queries. Keep the URL paths and endpoint names stable so the navigation and other modules continue to work. Public routes are browse, detail, and search. Publishing and managing require login.
 
 Publishing and editing share `app/templates/items/_item_form.html`, the `item_form_values()` and `validate_item()` helpers in `app/item_forms.py`, and `app/static/item-form.css`. Add or change editable fields there to keep both flows consistent. Editing preserves invalid selections and entered values on HTTP 400 responses; validation errors link to the relevant fields. Only the shared form fields can be updated: `owner_id`, `status`, and `created_at` remain server-controlled. Management rejects malformed CSRF tokens, including non-ASCII input, before changing an item.
+
+Sold items show a Relist button in My items to undo an accidental sold action. Its POST route requires login, a valid management CSRF token, and an item owned by the current seller with status `sold`. It restores status `active` and updates `updated_at`, so the item appears in public browsing, detail, and search again; the original fields, owner, and creation time are preserved.
 
 For the search page, apply all provided filters together and preserve their values in the result form. Use only active items and show an empty state when nothing matches. Filter URL parameters are `q`, `category`, `min_price`, and `max_price`. The `sort` parameter accepts `newest` (the default), `price_asc`, or `price_desc`. Price sorting breaks ties by newest creation time, then descending `_id`, so equal-price items have a stable order. Unknown sort values return a field error without querying MongoDB.
 

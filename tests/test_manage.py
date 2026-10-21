@@ -124,7 +124,7 @@ def test_edit_validation_preserves_invalid_selection_and_links_to_field(
     assert app.extensions["mongo_db"].items.find_one({"_id": item["_id"]}) == item
 
 
-@pytest.mark.parametrize("action", ["edit", "delete", "sold"])
+@pytest.mark.parametrize("action", ["edit", "delete", "sold", "relist"])
 def test_unicode_csrf_is_rejected_without_changing_the_item(
     app, seller, item, edit_form, action,
 ):
@@ -204,3 +204,85 @@ def test_publish_edit_sold_delete_lifecycle_preserves_ownership(app, seller, aut
     assert b"Updated desk lamp" not in seller.get("/my-items").data
     assert seller.get(f"/items/{item_id}").status_code == 404
     assert seller.get(f"/items/{item_id}/edit").status_code == 404
+
+
+def test_relist_restores_sold_item_to_public_results(app, seller, item, edit_form):
+    db = app.extensions["mongo_db"]
+    old_update = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    db.items.update_one({"_id": item["_id"]}, {"$set": {
+        "status": "sold", "updated_at": old_update,
+    }})
+    item_id = str(item["_id"])
+    mine = seller.get("/my-items")
+    assert b">Relist</button>" in mine.data
+    assert f'href="/items/{item_id}"'.encode() not in seller.get("/items").data
+
+    response = seller.post(f"/items/{item_id}/relist", data={
+        "csrf_token": edit_form["csrf_token"],
+    })
+    assert response.status_code == 302
+    assert response.location == "/my-items"
+    relisted = db.items.find_one({"_id": item["_id"]})
+    assert relisted["status"] == "active"
+    assert relisted["updated_at"] > old_update
+    for field in ("owner_id", "created_at", "title", "description", "price",
+                  "category", "condition", "image_url", "contact_info"):
+        assert relisted[field] == item[field]
+    assert seller.get(f"/items/{item_id}").status_code == 200
+    for path in ("/items", "/search?q=Desk+lamp"):
+        assert f'href="/items/{item_id}"'.encode() in seller.get(path).data
+    mine = seller.get("/my-items")
+    assert b"For sale" in mine.data and b">Mark sold</button>" in mine.data
+    assert b">Relist</button>" not in mine.data
+
+
+def test_relist_requires_login(app, item):
+    response = app.test_client().post(f'/items/{item["_id"]}/relist')
+    assert response.status_code == 302
+    assert "/login" in response.location
+    assert app.extensions["mongo_db"].items.find_one({"_id": item["_id"]}) == item
+
+
+@pytest.mark.parametrize("token", [None, "wrong-token"])
+def test_relist_requires_valid_csrf(app, seller, item, edit_form, token):
+    db = app.extensions["mongo_db"]
+    db.items.update_one({"_id": item["_id"]}, {"$set": {"status": "sold"}})
+    before = db.items.find_one({"_id": item["_id"]})
+    data = {} if token is None else {"csrf_token": token}
+    assert seller.post(f'/items/{item["_id"]}/relist', data=data).status_code == 400
+    assert db.items.find_one({"_id": item["_id"]}) == before
+
+
+def test_relist_rejects_other_sellers_item(app, seller, item, auth_post):
+    db = app.extensions["mongo_db"]
+    db.items.update_one({"_id": item["_id"]}, {"$set": {"status": "sold"}})
+    before = db.items.find_one({"_id": item["_id"]})
+    other = app.test_client()
+    assert auth_post(other, "/register", data={
+        "username": "Other Seller",
+        "email": "other@example.edu",
+        "password": "password123",
+    }).status_code == 302
+    assert other.get("/my-items").status_code == 200
+    with other.session_transaction() as state:
+        token = state["manage_csrf_token"]
+    assert other.post(f'/items/{item["_id"]}/relist', data={
+        "csrf_token": token,
+    }).status_code == 404
+    assert db.items.find_one({"_id": item["_id"]}) == before
+
+
+@pytest.mark.parametrize("status", ["active", "deleted"])
+def test_relist_only_accepts_sold_items(app, seller, item, edit_form, status):
+    db = app.extensions["mongo_db"]
+    db.items.update_one({"_id": item["_id"]}, {"$set": {"status": status}})
+    before = db.items.find_one({"_id": item["_id"]})
+    assert seller.post(f'/items/{item["_id"]}/relist', data={
+        "csrf_token": edit_form["csrf_token"],
+    }).status_code == 404
+    assert db.items.find_one({"_id": item["_id"]}) == before
+
+
+def test_relist_cannot_change_state_through_get(app, seller, item):
+    assert seller.get(f'/items/{item["_id"]}/relist').status_code == 405
+    assert app.extensions["mongo_db"].items.find_one({"_id": item["_id"]}) == item

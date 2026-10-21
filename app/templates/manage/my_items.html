@@ -50,6 +50,12 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit">Mark sold</button>
               </form>
+            {% else %}
+              <form method="post" class="inline-form"
+                    action="{{ url_for('manage.relist_item', item_id=item.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit">Relist</button>
+              </form>
             {% endif %}
 
             <form method="post" class="inline-form"

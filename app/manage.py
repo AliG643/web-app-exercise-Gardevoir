@@ -125,3 +125,19 @@ def mark_sold(item_id):
     if result.matched_count == 0:
         abort(404)
     return redirect(url_for("manage.my_items"))
+
+
+@manage.post("/items/<item_id>/relist")
+@login_required
+def relist_item(item_id):
+    _require_csrf_token()
+    result = get_db().items.update_one(
+        _owned_item_filter(item_id, statuses=("sold",)),
+        {"$set": {
+            "status": "active",
+            "updated_at": datetime.now(timezone.utc),
+        }},
+    )
+    if result.matched_count == 0:
+        abort(404)
+    return redirect(url_for("manage.my_items"))

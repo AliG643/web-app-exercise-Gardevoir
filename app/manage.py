@@ -2,9 +2,7 @@
 
 from datetime import datetime, timezone
 from hmac import compare_digest
-import math
 from secrets import token_urlsafe
-from urllib.parse import urlsplit
 
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 from flask_login import login_required
@@ -12,18 +10,9 @@ from flask_login import login_required
 from app.auth import current_owner_id
 from app.db import get_db, parse_object_id
 from app.item_data import CATEGORIES, CONDITIONS, public_item
+from app.item_forms import item_form_values, validate_item
 
 manage = Blueprint("manage", __name__)
-
-EDIT_FIELDS = (
-    "title",
-    "description",
-    "price",
-    "category",
-    "condition",
-    "image_url",
-    "contact_info",
-)
 
 
 def _csrf_token():
@@ -40,7 +29,7 @@ def _require_csrf_token():
     if (
         session.get("manage_csrf_owner") != str(current_owner_id())
         or not expected
-        or not compare_digest(expected, submitted)
+        or not compare_digest(expected.encode(), submitted.encode())
     ):
         abort(400)
 
@@ -54,47 +43,6 @@ def _owned_item_filter(item_id, statuses=("active", "sold")):
         "owner_id": current_owner_id(),
         "status": {"$in": list(statuses)},
     }
-
-
-def _form_values(source):
-    return {
-        name: str(source.get(name, "") or "").strip()
-        for name in EDIT_FIELDS
-    }
-
-
-def _validate_edit(values):
-    errors = {}
-
-    if not values["title"] or len(values["title"]) > 120:
-        errors["title"] = "Enter a title of at most 120 characters."
-    if not values["description"] or len(values["description"]) > 2000:
-        errors["description"] = "Enter a description of at most 2000 characters."
-    if values["category"] not in CATEGORIES:
-        errors["category"] = "Choose a valid category."
-    if values["condition"] not in CONDITIONS:
-        errors["condition"] = "Choose a valid condition."
-    if len(values["contact_info"]) > 200:
-        errors["contact_info"] = "Contact information must be at most 200 characters."
-
-    if len(values["image_url"]) > 2048:
-        errors["image_url"] = "Image URL is too long."
-    elif values["image_url"]:
-        try:
-            parsed = urlsplit(values["image_url"])
-        except ValueError:
-            parsed = None
-        if parsed is None or parsed.scheme not in ("http", "https") or not parsed.netloc:
-            errors["image_url"] = "Enter an http or https image URL."
-
-    try:
-        price = float(values["price"])
-    except ValueError:
-        price = None
-    if price is None or not math.isfinite(price) or price <= 0:
-        errors["price"] = "Enter a price greater than zero."
-
-    return errors, price
 
 
 @manage.get("/my-items")
@@ -126,17 +74,13 @@ def edit_item(item_id):
         abort(404)
 
     item = public_item(document)
-    form_values = _form_values(request.form if request.method == "POST" else document)
+    form_values = item_form_values(request.form if request.method == "POST" else document)
     errors = {}
 
     if request.method == "POST":
-        errors, price = _validate_edit(form_values)
+        errors, price = validate_item(form_values)
         if not errors:
-            changes = {
-                name: form_values[name]
-                for name in EDIT_FIELDS
-                if name != "price"
-            }
+            changes = form_values.copy()
             changes["price"] = price
             changes["updated_at"] = datetime.now(timezone.utc)
 
@@ -175,6 +119,22 @@ def mark_sold(item_id):
         _owned_item_filter(item_id, statuses=("active",)),
         {"$set": {
             "status": "sold",
+            "updated_at": datetime.now(timezone.utc),
+        }},
+    )
+    if result.matched_count == 0:
+        abort(404)
+    return redirect(url_for("manage.my_items"))
+
+
+@manage.post("/items/<item_id>/relist")
+@login_required
+def relist_item(item_id):
+    _require_csrf_token()
+    result = get_db().items.update_one(
+        _owned_item_filter(item_id, statuses=("sold",)),
+        {"$set": {
+            "status": "active",
             "updated_at": datetime.now(timezone.utc),
         }},
     )

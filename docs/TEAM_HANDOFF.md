@@ -15,6 +15,12 @@ This document records the shared contracts for the first sprint. It lets each fe
 
 Login, registration, and logout POST requests require a hidden `csrf_token` that matches the current browser session. Render it with `auth_csrf_token()` in account forms and the shared logout form. Missing, empty, forged, or another session's tokens return HTTP 400 before account lookups or login state changes. Refresh the form to recover from a stale token. Successful registration, login, and logout rotate the token; ordinary GET requests and validation errors keep it stable so multiple open forms remain usable until the login state changes. Existing safe `next` redirects are preserved. Publishing and item management retain their own CSRF checks.
 
+## Database failure fallback
+
+Unhandled `PyMongoError` exceptions during web requests return a shared availability page with HTTP 503 and `Cache-Control: no-store`. This includes account lookups, Flask-Login user loading, and seller management reads and writes. Existing route-specific database error messages remain in use when they can render successfully. Unrelated programming errors, validation errors, CSRF checks, and ownership checks retain their existing behavior.
+
+The fallback renders through the Jinja environment without request-specific template context processors, because Flask-Login's processor can repeat a failed user lookup. It also sets `authentication_unavailable=True` so the shared navigation does not evaluate `current_user`. It does not clear the login session. GET recovery links preserve the requested path and query; POST failures offer account/listing checks instead of resubmitting a write, whose outcome may be uncertain after a connection failure. The application does not automatically retry failed operations or expose exception details in the response.
+
 ## Item document contract
 
 The `items` collection stores the following fields. Keep MongoDB IDs as `ObjectId` values in the database; convert them to strings only for URLs and templates.

@@ -82,6 +82,11 @@ def edit_item(item_id):
         if not errors:
             changes = form_values.copy()
             changes["price"] = price
+            changes["original_price"] = (
+                float(form_values["original_price"])
+                if form_values["original_price"]
+                else None
+            )
             changes["updated_at"] = datetime.now(timezone.utc)
 
             result = get_db().items.update_one(query, {"$set": changes})

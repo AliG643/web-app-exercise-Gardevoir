@@ -10,10 +10,16 @@ The account flow, browsing, item details, publishing, seller management, and sea
 
 ## User stories and task boards
 
-- [User stories in GitHub Issues](https://github.com/software-students-fall2026/web-app-exercise-Gardevoir/issues)
-- [Sprint task boards in GitHub Projects](https://github.com/software-students-fall2026/web-app-exercise-Gardevoir/projects)
+- [User stories and acceptance work in GitHub Issues](https://github.com/software-students-fall2026/web-app-exercise-Gardevoir/issues?q=is%3Aissue)
+- [Gardevoir - Sprint 1](https://github.com/orgs/software-students-fall2026/projects/87)
+- [Gardevoir - Sprint 2](https://github.com/orgs/software-students-fall2026/projects/88)
+- [Final acceptance and course handoff checklist #33](https://github.com/software-students-fall2026/web-app-exercise-Gardevoir/issues/33)
 
-Issues are enabled. The team still needs to record its user stories and maintain the two sprint boards in GitHub.
+The twelve user stories (#21–#32) include owners, acceptance criteria, and links to implementation PRs. These records and boards were reconstructed from repository history on 2026-10-26, with the sprint grouping confirmed by the team. Done records merged implementation; final end-to-end acceptance remains tracked separately.
+
+## Stakeholder demo and final handoff
+
+The team confirmed that the stakeholder demo with Vignesh on 2026-10-21 was completed. Feedback was positive and encouraged additional features and polish. Later merged changes include outage recovery, optional original price, the refreshed UI, and product photos. See the [closeout record](docs/PROJECT_CLOSEOUT.md) for implementation evidence and remaining acceptance steps, and the [10/14 planning record](docs/meetings/2026-10-14-planning.md) for the initial division of work and development plan.
 
 ## Run locally
 

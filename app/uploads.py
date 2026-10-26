@@ -1,5 +1,4 @@
 import re
-from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
@@ -27,17 +26,10 @@ def save_item_image(upload, existing_url=""):
     if upload is None or not upload.filename:
         return existing_url
 
-    data = upload.stream.read(MAX_IMAGE_BYTES + 1)
-
-    if len(data) > MAX_IMAGE_BYTES:
-        raise ImageUploadError(
-            "Choose a photo smaller than 5 MB."
-        )
-
     # Validate and decode the actual image contents.
     try:
         with Image.open(
-            BytesIO(data),
+           upload.stream,
             formats=("JPEG", "PNG", "WEBP"),
         ) as original:
             if original.width * original.height > MAX_IMAGE_PIXELS:

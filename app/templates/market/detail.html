@@ -36,6 +36,39 @@
 <p class="item-detail-description">{{ item.description }}</p>
 </section>
     <section class="seller-contact" aria-labelledby="contact-heading">
+      <h2 id="contact-heading">Contact the seller</h2>
+
+      {% if item.contact_info %}
+        <p class="item-detail-contact">{{ item.contact_info }}</p>
+      {% else %}
+        <p>The seller has not provided contact information.</p>
+      {% endif %}
+
+      {% if current_user.is_authenticated %}
+        {% if current_user.id != item.owner_id %}
+          <form method="post"
+                action="{{ url_for('messages.start_conversation',
+                                  item_id=item.id) }}">
+            <input type="hidden"
+                  name="csrf_token"
+                  value="{{ auth_csrf_token() }}">
+
+            <button class="primary-button" type="submit">
+              Message seller
+            </button>
+          </form>
+        {% else %}
+          <p>This is your listing.</p>
+        {% endif %}
+      {% else %}
+        <a href="{{ url_for(
+            'auth.login',
+            next=url_for('market.item_detail', item_id=item.id)
+        ) }}">
+          Log in to message the seller
+        </a>
+      {% endif %}
+    </section>
 <h2 id="contact-heading">Contact the seller</h2>{% if item.contact_info %}
 <p class="item-detail-contact">{{ item.contact_info }}</p>{% else %}
 <p class="item-detail-contact">The seller has not provided contact information.</p>{% endif %}

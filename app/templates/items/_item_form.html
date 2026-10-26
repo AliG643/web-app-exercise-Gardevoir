@@ -1,4 +1,6 @@
-{% from "_ui.html" import field_error %}
+{% from "_ui.html" import field_error, icon %}
+<div data-item-feedback aria-live="polite">
+{% if form_error %}<p class="form-errors" role="alert">{{ form_error }}</p>{% endif %}
 {% if errors %}
 <div class="form-errors" role="alert">
 <p>Please correct the following fields:</p>
@@ -9,6 +11,10 @@
 </ul>
 </div>
 {% endif %}
+{% if errors or form_error %}
+<noscript><p>If you selected a new photo, choose it again before submitting.</p></noscript>
+{% endif %}
+</div>
 <fieldset class="form-section">
 <legend>Item details</legend>
   <div class="form-field">
@@ -49,33 +55,45 @@
 </fieldset>
 <fieldset class="form-section">
 <legend>Photo &amp; contact</legend>
+  <section class="photo-picker" data-photo-picker data-current-url="{{ current_image_url }}">
+    <label for="image_file">Product photo (optional)</label>
+    <div class="photo-dropzone" data-photo-dropzone>
+      <div class="photo-empty" data-photo-empty {% if current_image_url %}hidden{% endif %}>
+        {{ icon('image', 32) }}
+        <p>Show buyers what you’re selling</p>
+        <span data-photo-drag-hint hidden>Drag a photo here, or </span><span>choose one from your device.</span>
+      </div>
+      <img class="photo-preview" data-photo-preview alt="Product photo preview"
+           {% if current_image_url %}src="{{ current_image_url }}"{% else %}hidden{% endif %}>
+      <input class="photo-file-input" id="image_file" name="image_file" type="file"
+             accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+             aria-describedby="photo-hint photo-message{% if errors.image_file %} image_file-error{% endif %}"
+             {% if errors.image_file %}aria-invalid="true"{% endif %}>
+    </div>
+    <p class="photo-hint" id="photo-hint">One JPG, PNG, or WebP photo, up to 5 MB.</p>
+    <p class="photo-message" id="photo-message" data-photo-message role="status"></p>
+    {{ field_error('image_file', errors) }}
+    {% if current_image_url %}
+    <label class="photo-remove-label" for="remove_image">
+      <input id="remove_image" name="remove_image" type="checkbox" value="1"
+             {% if request.form.get('remove_image') == '1' %}checked{% endif %}>
+      Remove current photo
+    </label>
+    {% endif %}
+    <button class="photo-reset secondary-button" type="button" data-photo-reset hidden>
+      {{ "Keep current photo" if current_image_url else "Clear selection" }}
+    </button>
+    <details class="photo-url-option" {% if errors.image_url %}open{% endif %}>
+      <summary>Use an image link instead</summary>
+      <div class="form-field">
+        <label for="image_url">Image URL</label>
+        <input id="image_url" name="image_url" type="url" maxlength="2048" value="{{ form_values.image_url }}"
+               {% if errors.image_url %}aria-invalid="true" aria-describedby="image_url-error"{% endif %}>
+        {{ field_error('image_url', errors) }}
+      </div>
+    </details>
+  </section>
   <div class="form-field">
-<label for="image">Product photo (optional)</label>
-    <input
-      id="image"
-      name="image"
-      type="file"
-      accept="image/jpeg,image/png,image/webp"
-      {% if errors.image %}
-        aria-invalid="true"
-        aria-describedby="image-error"
-      {% endif %}>
-
-    {{ field_error('image', errors) }}
-  </div>
-  <div class="form-field">
-    <label for="contact_info">Contact information (optional)</label>
-    <input
-      id="contact_info"
-      name="contact_info"
-      type="text"
-      maxlength="200"
-      value="{{ form_values.contact_info }}"
-      {% if errors.contact_info %}
-        aria-invalid="true"
-        aria-describedby="contact_info-error"
-      {% endif %}>
-    {{ field_error('contact_info', errors) }}
-  </div>
+<label for="contact_info">Contact information (optional)</label>
+<input id="contact_info" name="contact_info" type="text" maxlength="200" value="{{ form_values.contact_info }}" {% if errors.contact_info %}aria-invalid="true" aria-describedby="contact_info-error"{% endif %}>{{ field_error('contact_info', errors) }}</div>
 </fieldset>
-

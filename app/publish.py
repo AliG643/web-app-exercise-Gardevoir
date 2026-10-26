@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from hmac import compare_digest
 from secrets import token_urlsafe
-from app.uploads import ImageUploadError, save_item_image
+
 from flask import (
     Blueprint,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -13,12 +14,14 @@ from flask import (
     url_for,
 )
 from flask_login import login_required
+from bson import ObjectId
 from pymongo.errors import PyMongoError
 
 from app.auth import current_owner_id
 from app.db import get_db
 from app.item_data import CATEGORIES, CONDITIONS
 from app.item_forms import item_form_values, validate_item
+from app.images import photo_input, image_fields, discard_unreferenced_photo
 
 
 publish = Blueprint("publish", __name__)
@@ -34,14 +37,13 @@ def new_item():
         saved_token = session.get("publish_csrf_token", "")
         form_token = request.form.get("csrf_token", "")
 
-        if (
-            session.get("publish_csrf_owner") != owner
-            or not saved_token
-            or not compare_digest(
-                saved_token.encode(),
-                form_token.encode(),
-            )
-        ):
+        if session.get("publish_csrf_owner") != owner:
+            abort(400)
+
+        if not saved_token:
+            abort(400)
+
+        if not compare_digest(saved_token.encode(), form_token.encode()):
             abort(400)
 
     if (
@@ -51,45 +53,26 @@ def new_item():
         session["publish_csrf_owner"] = owner
         session["publish_csrf_token"] = token_urlsafe(32)
 
-    form_values = item_form_values(
-        request.form if request.method == "POST" else {}
-    )
-
-    # The server now controls the stored image address.
-    form_values["image_url"] = ""
+    if request.method == "POST":
+        form_values = item_form_values(request.form)
+    else:
+        form_values = item_form_values({})
 
     errors = {}
     status_code = 200
+    form_error = None
 
     if request.method == "POST":
+        photo, remove, photo_errors = photo_input(form_values)
         errors, price = validate_item(form_values)
-        image_url = ""
-
-        # Process the photo after validating the text fields.
-        if not errors:
-            try:
-                image_url = save_item_image(
-                    request.files.get("image")
-                )
-            except ImageUploadError as error:
-                errors["image"] = str(error)
-            except OSError:
-                current_app.logger.exception(
-                    "Unable to save product photo"
-                )
-                errors["image"] = (
-                    "Photo storage is temporarily unavailable."
-                )
-                status_code = 503
+        errors.update(photo_errors)
 
         if errors:
-            if status_code != 503:
-                status_code = 400
+            status_code = 400
         else:
             now = datetime.now(timezone.utc)
 
             item = form_values.copy()
-            item["image_url"] = image_url
             item["price"] = price
             item["original_price"] = (
                 float(form_values["original_price"])
@@ -100,26 +83,29 @@ def new_item():
             item["status"] = "active"
             item["created_at"] = now
             item["updated_at"] = now
+            item["_id"] = ObjectId()
 
             try:
-                result = get_db().items.insert_one(item)
-            except PyMongoError:
-                flash(
-                    "We could not confirm your post. Check My items "
-                    "before trying again to avoid a duplicate. "
-                    "Your text entries are kept below. "
-                    "Select your photo again if you retry.",
-                    "error",
-                )
+                item.update(image_fields(form_values, photo, remove))
+            except OSError:
+                form_error = "Your photo could not be saved. Please try again."
                 status_code = 503
             else:
-                flash("Your item has been posted.", "success")
-                return redirect(
-                    url_for(
-                        "market.item_detail",
-                        item_id=str(result.inserted_id),
+                try:
+                    get_db().items.insert_one(item)
+                except PyMongoError:
+                    discard_unreferenced_photo(item.get("image_key"))
+                    form_error = (
+                        "We could not confirm your post. Check My items before trying "
+                        "again to avoid a duplicate. Your entries are kept below."
                     )
-                )
+                    status_code = 503
+                else:
+                    flash("Your item has been posted.", "success")
+                    destination = url_for("market.item_detail", item_id=str(item["_id"]))
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return jsonify(redirect_url=destination)
+                    return redirect(destination)
 
     return render_template(
         "publish/new_item.html",
@@ -128,4 +114,6 @@ def new_item():
         categories=CATEGORIES,
         conditions=CONDITIONS,
         csrf_token=session["publish_csrf_token"],
+        form_error=form_error,
+        current_image_url="",
     ), status_code

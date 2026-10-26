@@ -3,7 +3,8 @@
 {% block title %}{{ "Edit item" if editing else "My items" }} | Gardevoir{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='manage.css') }}">{% if editing %}
-<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">{% endif %}{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">
+<script src="{{ url_for('static', filename='item-form.js') }}" defer></script>{% endif %}{% endblock %}
 {% block content %}
 {% if editing %}
 <section class="form-card manage-edit">
@@ -14,7 +15,7 @@
 <p>Fields marked * are required.</p>
 </div>
 </header>
-  <form class="item-form" method="post" action="{{ url_for('manage.edit_item', item_id=item.id) }}" enctype="multipart/form-data">
+  <form class="item-form" enctype="multipart/form-data" method="post" action="{{ url_for('manage.edit_item', item_id=item.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% include "items/_item_form.html" %}
 <div class="form-actions">
 <button class="primary-button" type="submit">Save changes {{ icon('check', 18) }}</button>

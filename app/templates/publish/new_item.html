@@ -2,7 +2,8 @@
 {% from "_ui.html" import icon %}
 {% block title %}Post an item | Gardevoir{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">
+<script src="{{ url_for('static', filename='item-form.js') }}" defer></script>{% endblock %}
 {% block content %}
 <section class="form-card">
   <a class="back-link" href="{{ url_for('market.items') }}">{{ icon('back', 17) }}Back to marketplace</a>
@@ -12,7 +13,7 @@
 <p>Fields marked * are required.</p>
 </div>
 </header>
-  <form class="item-form" method="POST" action="{{ url_for('publish.new_item') }}" enctype="multipart/form-data">
+  <form class="item-form" enctype="multipart/form-data" method="POST" action="{{ url_for('publish.new_item') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% include "items/_item_form.html" %}
     <div class="form-actions">

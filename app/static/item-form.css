@@ -71,3 +71,48 @@
     flex: 1;
   }
 }
+
+/* Photo selection follows the shared form palette and works without JavaScript. */
+.item-form [hidden], [data-item-feedback]:empty { display: none !important; }
+.photo-picker { min-width: 0; }
+.photo-picker > label { display: block; margin-bottom: var(--space-3); }
+.photo-dropzone {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  text-align: center;
+}
+.photo-dropzone:focus-within, .photo-dropzone.is-dragging {
+  border-color: var(--focus);
+}
+.photo-empty { color: var(--muted); font-size: .875rem; line-height: 1.5; }
+.photo-empty p { margin: var(--space-3) 0 var(--space-1); color: var(--ink); font-weight: 600; }
+.photo-preview { width: 100%; height: auto; max-height: 260px; object-fit: contain; border-radius: 8px; }
+.item-form .photo-file-input {
+  width: 100%; min-width: 0; margin: 0; padding: 0; border: 0;
+  background: transparent; font-size: .875rem;
+}
+.photo-file-input::file-selector-button {
+  min-height: 44px;
+  padding: var(--space-3);
+  margin-right: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.photo-hint, .photo-message { font-size: .875rem; margin: var(--space-2) 0; overflow-wrap: anywhere; }
+.photo-hint { color: var(--muted); }
+.photo-message.is-error { color: var(--danger); }
+.photo-remove-label { display: flex !important; align-items: center; gap: var(--space-2); min-height: 44px; font-weight: 400; }
+.item-form .photo-remove-label input { width: 18px; min-height: 18px; height: 18px; margin: 0; padding: 0; }
+.photo-url-option { margin-top: var(--space-3); }
+.photo-url-option summary { display: list-item; min-height: 44px; padding-block: var(--space-3); color: var(--muted); cursor: pointer; }
+.photo-url-option .form-field { margin-top: var(--space-2); }
+.item-form button:disabled { opacity: .6; cursor: wait; }

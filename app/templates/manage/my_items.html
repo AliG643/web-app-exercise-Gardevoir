@@ -1,77 +1,80 @@
 {% extends "base.html" %}
-
+{% from "_ui.html" import icon %}
 {% block title %}{{ "Edit item" if editing else "My items" }} | Gardevoir{% endblock %}
-
 {% block extra_head %}
-{% if editing %}
-<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">
-{% endif %}
-<style>
-  .manage-list { list-style: none; padding: 0; display: grid; gap: 16px; }
-  .manage-item { min-width: 0; overflow-wrap: anywhere; border-top: 1px solid #e4e9ed; padding-top: 16px; }
-  .manage-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-  .manage-actions a, .manage-actions button { min-height: 44px; font: inherit; }
-  .manage-actions button { padding: 8px 12px; cursor: pointer; }
-</style>
-{% endblock %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='manage.css') }}">{% if editing %}
+<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">{% endif %}{% endblock %}
 {% block content %}
 {% if editing %}
 <section class="form-card manage-edit">
-  <h1>Edit item</h1>
-
-  <p>Fields marked * are required.</p>
+<a class="back-link" href="{{ url_for('manage.my_items') }}">{{ icon('back', 17) }}Back to My items</a>
+<header class="page-heading">
+<div>
+<h1>Edit item</h1>
+<p>Fields marked * are required.</p>
+</div>
+</header>
   <form class="item-form" method="post" action="{{ url_for('manage.edit_item', item_id=item.id) }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% include "items/_item_form.html" %}
-
-    <button class="primary-button" type="submit">Save changes</button>
-    <a href="{{ url_for('manage.my_items') }}">Cancel</a>
-  </form>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% include "items/_item_form.html" %}
+<div class="form-actions">
+<button class="primary-button" type="submit">Save changes {{ icon('check', 18) }}</button>
+<a class="text-button" href="{{ url_for('manage.my_items') }}">Cancel</a>
+</div>
+</form>
 </section>
 {% else %}
-<section class="form-card">
-  <h1>My items</h1>
-
+<section class="manage-page" aria-labelledby="manage-title">
+  <header class="page-heading">
+<div>
+<h1 id="manage-title">My items</h1>
+<p>Manage your listings, from posting to sold.</p>
+</div>
+<a class="primary-button" href="{{ url_for('publish.new_item') }}">{{ icon('plus', 18) }}Post an item</a>
+</header>
   {% if items %}
-    <ul class="manage-list">
-      {% for item in items %}
-        <li class="manage-item">
-          <h2>{{ item.title }}</h2>
-          <p>${{ "%.2f"|format(item.price) }}</p>
-          <p>{{ "Sold" if item.status == "sold" else "For sale" }}</p>
-
-          <div class="manage-actions">
-            <a href="{{ url_for('manage.edit_item', item_id=item.id) }}">Edit</a>
-
-            {% if item.status == "active" %}
-              <form method="post" class="inline-form"
-                    action="{{ url_for('manage.mark_sold', item_id=item.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit">Mark sold</button>
-              </form>
-            {% else %}
-              <form method="post" class="inline-form"
-                    action="{{ url_for('manage.relist_item', item_id=item.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit">Relist</button>
-              </form>
-            {% endif %}
-
-            <form method="post" class="inline-form"
-                  action="{{ url_for('manage.delete_item', item_id=item.id) }}"
-                  onsubmit="return confirm('Permanently delete this item? This cannot be undone.');">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit">Delete</button>
-            </form>
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
+    <div class="section-bar">
+<h2>Your listings <span class="item-count">{{ items|length }}</span>
+</h2>
+<p>Newest first</p>
+</div>
+    <ul class="manage-list">{% for item in items %}
+<li class="manage-item">
+      <div class="manage-thumbnail">{% if item.image_url %}
+<img src="{{ item.image_url }}" alt="" width="88" height="88" loading="lazy">{% else %}{{ icon('image', 28) }}{% endif %}
+</div>
+      <div class="manage-info">
+<h2>{% if item.status == 'active' %}
+<a href="{{ url_for('market.item_detail', item_id=item.id) }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}
+</h2>
+<p>{{ item.category }}<span class="meta-divider" aria-hidden="true">
+</span>{{ item.condition }}</p>
+<span class="status-badge {{ 'status-sold' if item.status == 'sold' else 'status-active' }}">{{ "Sold" if item.status == 'sold' else "For sale" }}</span>
+</div>
+      <p class="manage-price price">${{ "%.2f"|format(item.price) }}</p>
+      <div class="manage-actions">
+        <a class="secondary-button" href="{{ url_for('manage.edit_item', item_id=item.id) }}">Edit</a>
+        {% if item.status == 'active' %}
+<form method="post" class="inline-form" action="{{ url_for('manage.mark_sold', item_id=item.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="text-button" type="submit">Mark sold</button>
+</form>
+        {% else %}
+<form method="post" class="inline-form" action="{{ url_for('manage.relist_item', item_id=item.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="text-button" type="submit">Relist</button>
+</form>{% endif %}
+        <form method="post" class="inline-form" action="{{ url_for('manage.delete_item', item_id=item.id) }}" onsubmit="return confirm('Permanently delete this item? This cannot be undone.');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="text-button danger-button" type="submit">Delete</button>
+</form>
+      </div>
+    </li>{% endfor %}
+</ul>
   {% else %}
-    <p>You haven't posted any items yet.</p>
-    <a href="{{ url_for('publish.new_item') }}">Post an item</a>
-  {% endif %}
+<div class="empty-state">{{ icon('image', 32) }}<h2>You haven't posted any items yet.</h2>
+<p>Your listings will appear here so you can edit them or mark them sold.</p>
+<a class="primary-button" href="{{ url_for('publish.new_item') }}">{{ icon('plus', 18) }}Post an item</a>
+</div>{% endif %}
 </section>
 {% endif %}
 {% endblock %}

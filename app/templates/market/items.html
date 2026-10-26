@@ -1,39 +1,50 @@
-{# browse page displaying active products and their information, link to their detail pages#}
 {% extends "base.html" %}
+{% from "_ui.html" import icon %}
 {% block title %}Marketplace | Gardevoir{% endblock %}
-
 {% block extra_head %}
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='market.css') }}">
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='item-card.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='market.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='item-card.css') }}">
 {% endblock %}
-
 {% block content %}
-  <section class="market-page" aria-labelledby="market-title">
-    <h1 id="market-title">Marketplace</h1>
-    <p>Browse second-hand items from your campus community.</p>
+<section class="market-page" aria-labelledby="market-title">
+  <header class="page-heading">
+<div>
+<h1 id="market-title">Marketplace<span class="heading-dot">.</span>
+</h1>
+<p>Browse second-hand items from your campus community.</p>
+</div>
 
-    {% if service_error %}
-      <div class="market-message" role="alert">
-        <h2>Marketplace temporarily unavailable</h2>
-        <p>{{ service_error }}</p>
-      </div>
-
-    {% elif items %}
-      <ul class="market-grid">
-        {% for item in items %}
-          <li>
-            {% include "market/_item_card.html" %}
-          </li>
-        {% endfor %}
-      </ul>
-
-    {% else %}
-      <div class="market-message">
-        <h2>No items available yet</h2>
-        <p>Check back soon for new listings.</p>
-      </div>
-    {% endif %}
-  </section>
+</header>
+  <form class="browse-search" role="search" action="{{ url_for('search.results') }}" method="get">
+    <label class="sr-only" for="browse-q">Search items</label>{{ icon('search', 22) }}
+    <input id="browse-q" name="q" type="search" placeholder="Search campus finds" maxlength="200">
+    <button class="primary-button" type="submit">Search<span class="search-arrow">{{ icon('arrow', 18) }}</span>
+</button>
+  </form>
+  <div class="category-links" role="group" aria-label="Browse by category">
+<span class="category-current">All items</span>{% for category in categories %}
+<a href="{{ url_for('search.results', category=category) }}">{{ category }}</a>{% endfor %}
+</div>
+  {% if service_error %}
+    <div class="market-message empty-state" role="alert">{{ icon('alert', 28) }}<h2>Marketplace temporarily unavailable</h2>
+<p>{{ service_error }}</p>
+<a class="secondary-button" href="{{ url_for('market.items') }}">Try again</a>
+</div>
+  {% elif items %}
+    <div class="section-bar">
+<h2>Available now <span class="item-count">{{ items|length }}</span>
+</h2>
+<p>{{ icon('sort', 15) }} Newest first</p>
+</div>
+    <ul class="market-grid">{% for item in items %}
+<li>{% include "market/_item_card.html" %}
+</li>{% endfor %}
+</ul>
+  {% else %}
+    <div class="market-message empty-state">{{ icon('image', 32) }}<h2>No items available yet</h2>
+<p>Check back soon for new listings.</p>
+<a class="primary-button" href="{{ url_for('publish.new_item') }}">{{ icon('plus', 18) }}Post an item</a>
+</div>
+  {% endif %}
+</section>
 {% endblock %}

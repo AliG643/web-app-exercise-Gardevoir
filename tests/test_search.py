@@ -29,7 +29,13 @@ class SearchPage(HTMLParser):
         attrs = dict(attrs)
         if tag == "a":
             self.current_link = {"href": attrs.get("href"), "name": attrs.get("aria-label"), "text": []}
-        if tag == "a" and attrs.get("href", "").startswith("/items/"):
+        href = attrs.get("href", "")
+        # Navigation can also contain /items/new; count only detail routes.
+        if (
+            tag == "a"
+            and href.startswith("/items/")
+            and ObjectId.is_valid(href.removeprefix("/items/"))
+        ):
             self.item_links.append(attrs["href"])
         if tag == "input" and attrs.get("name"):
             self.values[attrs["name"]] = attrs.get("value", "")

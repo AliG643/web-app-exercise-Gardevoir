@@ -1,17 +1,23 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon %}
 {% block title %}Log in | Gardevoir{% endblock %}
 {% block content %}
-  <section class="form-card">
-    <h1>Welcome back</h1>
-    <p>Log in to post and manage your items.</p>
-    <form method="post">
-      <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="email" required value="{{ request.form.get('email', '') }}">
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
-      <button class="primary-button" type="submit">Log in</button>
-    </form>
-    <p class="form-footer">New here? <a href="{{ url_for('auth.register', next=request.values.get('next')) }}">Create an account</a>.</p>
-  </section>
+<section class="form-card auth-card" aria-labelledby="login-title">
+  <a class="back-link" href="{{ url_for('market.items') }}">{{ icon('back', 17) }}Back to marketplace</a>
+  <h1 id="login-title">Welcome back</h1>
+<p>Log in to post and manage your items.</p>
+  <form class="auth-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
+    <div>
+<label for="email">Email</label>
+<input id="email" name="email" type="email" autocomplete="email" required value="{{ request.form.get('email', '') }}">
+</div>
+    <div>
+<label for="password">Password</label>
+<input id="password" name="password" type="password" autocomplete="current-password" required>
+</div>
+    <button class="primary-button" type="submit">Log in {{ icon('arrow', 18) }}</button>
+  </form>
+  <p class="form-footer">New here? <a href="{{ url_for('auth.register', next=request.values.get('next')) }}">Create an account</a>.</p>
+</section>
 {% endblock %}

@@ -20,7 +20,12 @@ class MarketPage(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         href = attrs.get("href","")
-        if tag == "a" and href.startswith("/items/"):
+        # Navigation can also contain /items/new; count only detail routes.
+        if (
+            tag == "a"
+            and href.startswith("/items/")
+            and ObjectId.is_valid(href.removeprefix("/items/"))
+        ):
             self.item_links.append(href)
 @pytest.fixture
 

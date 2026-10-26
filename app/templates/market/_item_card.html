@@ -1,33 +1,24 @@
+{% from "_ui.html" import icon %}
 <article class="item-card">
-  <a class="item-card-link"
-     href="{{ url_for('market.item_detail', item_id=item.id) }}">
-
-    {% if item.image_url %}
-      <img class="item-card-image"
-           src="{{ item.image_url }}"
-           alt=""
-           loading="lazy">
-    {% else %}
-      <div class="item-card-image item-card-no-image"
-           aria-hidden="true">
-        No photo available
-      </div>
-    {% endif %}
-
-    <div class="item-card-body">
-      <h2 class="item-card-title">{{ item.title }}</h2>
-
-      <p class="item-card-price">
-        ${{ "%.2f"|format(item.price) }}
-      </p>
-
-      <p class="item-card-category">{{ item.category }}</p>
-
-      <p class="item-card-condition">
-        Condition: {{ item.condition }}
-      </p>
-
-      <span class="item-card-details">View details →</span>
+  <a class="item-card-link" href="{{ url_for('market.item_detail', item_id=item.id) }}">
+    <div class="item-card-media">
+      {% if item.image_url %}
+<img class="item-card-image" src="{{ item.image_url }}" alt="" loading="lazy" width="480" height="360">
+      {% else %}
+<div class="item-card-image item-card-no-image" aria-hidden="true">{{ icon('image', 32) }}<span>No photo available</span>
+</div>{% endif %}
     </div>
+    <div class="item-card-body">
+<h2 class="item-card-title">{{ item.title }}</h2>
+<p class="item-card-category">
+<span>{{ item.category }}</span>
+<span class="condition-badge">{{ item.condition }}</span>
+</p>
+<div class="item-card-bottom">
+<p class="item-card-price price">${{ "%.2f"|format(item.price) }}</p>
+<span class="item-card-details">
+<span class="sr-only">View details</span>{{ icon('arrow', 18) }}</span>
+</div>
+</div>
   </a>
 </article>

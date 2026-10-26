@@ -1,18 +1,73 @@
-.item-form textarea,
-.item-form select {
-  width: 100%;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid #aebbc6;
-  border-radius: 8px;
-  background: white;
-  font: inherit;
+.item-form  {
+  display: grid;
+  gap: var(--space-8);
 }
 
-.item-form textarea {
-  resize: vertical;
+.form-section  {
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: var(--space-6) 0 0;
+  margin: 0;
+  min-width: 0;
 }
 
-.item-form small {
-  color: #52606d;
+.form-section legend  {
+  padding: 0 var(--space-4) 0 0;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -.015em;
+}
+
+.form-field + .form-field, .form-row + .form-row  {
+  margin-top: var(--space-5);
+}
+
+.form-row  {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.form-row > .form-field  {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.form-actions  {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+.form-errors  {
+  background: var(--danger-soft);
+  border: 1px solid #e2c5ba;
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  font-size: .875rem;
+}
+
+.form-errors p  {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.form-errors ul  {
+  margin: 0;
+  padding-left: var(--space-5);
+  line-height: 1.7;
+}
+
+@media (max-width: 540px)  {
+  .form-row  {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+  .form-actions .primary-button  {
+    flex: 1;
+  }
 }

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Temporarily unavailable | Gardevoir{% endblock %}
 {% block content %}
-  <section class="form-card" aria-labelledby="unavailable-title">
+  <section class="form-card auth-card" aria-labelledby="unavailable-title">
     <h1 id="unavailable-title">Temporarily unavailable</h1>
     {% if request.method == 'POST' %}
       <p role="alert">We couldn't confirm the result of your request.</p>

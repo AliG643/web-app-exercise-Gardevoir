@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template,current_app,abort
 from pymongo.errors import PyMongoError
 from app.db import get_db,parse_object_id
-from app.item_data import public_item
+from app.item_data import CATEGORIES, public_item
 market = Blueprint("market", __name__)
 
 
@@ -15,8 +15,8 @@ def items():
         products = [public_item(document) for document in documents]
     except PyMongoError:
         current_app.logger.exception("Unable to load marketplace items.")
-        return render_template("market/items.html", items=[],service_error=("The marketplace is temporarily unavailable. Please try again."),),503
-    return render_template("market/items.html",items=products,service_error=None)
+        return render_template("market/items.html", items=[],categories=CATEGORIES,service_error=("The marketplace is temporarily unavailable. Please try again."),),503
+    return render_template("market/items.html",items=products,categories=CATEGORIES,service_error=None)
 
 
 @market.get("/items/<item_id>")

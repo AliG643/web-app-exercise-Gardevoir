@@ -5,9 +5,10 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='search.css') }}">
 {% endblock %}
 {% block content %}
+{% from "_ui.html" import icon %}
   <section class="search-page" aria-labelledby="search-title">
-    <h1 id="search-title">Find your next campus bargain</h1>
-    <p class="search-intro">Search second-hand items by keyword, category, or price.</p>
+    <header class="page-heading"><div><h1 id="search-title">Find your next campus bargain</h1><p>Search second-hand items by keyword, category, or price.</p></div></header>
+    <div class="search-layout"><div class="search-controls">
 
     <form class="search-filters" role="search" action="{{ url_for('search.results') }}" method="get">
       {% if errors %}
@@ -71,6 +72,7 @@
       </div>
     </form>
 
+    </div><div class="search-results">
     {% if selected_filters %}
       <div class="search-selected-filters" role="group" aria-labelledby="selected-filters-title">
         <h2 id="selected-filters-title">Selected filters</h2>
@@ -78,7 +80,7 @@
           {% for filter in selected_filters %}
             <li>
               <a class="search-filter-chip" href="{{ filter.remove_url }}" aria-label="Remove {{ filter.label }}">
-                <span>{{ filter.label }}</span><span aria-hidden="true">&times;</span>
+                <span>{{ filter.label }}</span>{{ icon("close", 14) }}
               </a>
             </li>
           {% endfor %}
@@ -86,8 +88,11 @@
       </div>
     {% endif %}
 
+    {% if errors %}
+      <div class="search-message empty-state"><h2>Update your filters</h2><p>Correct the highlighted fields to view matching items.</p></div>
+    {% endif %}
     {% if service_error %}
-      <div class="search-message" role="alert"><p>{{ service_error }}</p></div>
+      <div class="search-message empty-state" role="alert"><p>{{ service_error }}</p></div>
     {% elif not errors %}
       <div class="search-results-heading">
         <h2>Search results</h2>
@@ -100,7 +105,7 @@
           {% endfor %}
         </ul>
       {% else %}
-        <div class="search-message">
+        <div class="search-message empty-state">
           {% if has_filters %}
             <h3>No items match your search</h3>
             <p>Try a different keyword or a wider price range.</p>
@@ -112,5 +117,6 @@
         </div>
       {% endif %}
     {% endif %}
+    </div></div>
   </section>
 {% endblock %}

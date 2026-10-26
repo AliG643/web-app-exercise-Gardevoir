@@ -1,78 +1,46 @@
 {% extends "base.html" %}
-
+{% from "_ui.html" import icon %}
 {% block title %}{{ item.title }} | Gardevoir{% endblock %}
-
 {% block extra_head %}
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='market.css') }}">
-{% endblock %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='market.css') }}">{% endblock %}
 {% block content %}
-  <p>
-    <a href="{{ url_for('market.items') }}">
-      ← Back to marketplace
-    </a>
-  </p>
-
-  <article class="item-detail" aria-labelledby="item-title">
+<a class="back-link" href="{{ url_for('market.items') }}">{{ icon('back', 17) }}Back to marketplace</a>
+<article class="item-detail" aria-labelledby="item-title">
+<div class="item-detail-layout">
+  <div class="item-detail-media">{% if item.image_url %}
+<img class="item-detail-image" src="{{ item.image_url }}" alt="{{ item.title }}" width="640" height="640">{% else %}
+<div class="item-detail-no-image">{{ icon('image', 48) }}<p>No photo available for this item.</p>
+</div>{% endif %}
+</div>
+  <div class="item-detail-information">
     <header class="item-detail-header">
-      <h1 id="item-title">{{ item.title }}</h1>
-
-      <p class="item-detail-price">
-        ${{ "%.2f"|format(item.price) }}
-      </p>
-
-      {% if item.get("original_price") is not none %}
-        <p>
-          Original price: ${{ "%.2f"|format(item.original_price) }}
-        </p>
-      {% endif %}
-    </header>
-    <div class="item-detail-layout">
-      <div class="item-detail-media">
-        {% if item.image_url %}
-          <img class="item-detail-image"
-               src="{{ item.image_url }}"
-               alt="{{ item.title }}">
-        {% else %}
-          <div class="item-detail-no-image">
-            <p>No photo available for this item.</p>
-          </div>
-        {% endif %}
-      </div>
-
-      <div class="item-detail-information">
-        <section aria-labelledby="information-heading">
-          <h2 id="information-heading">Item information</h2>
-
-          <dl class="item-detail-facts">
-            <dt>Category</dt>
-            <dd>{{ item.category }}</dd>
-
-            <dt>Condition</dt>
-            <dd>{{ item.condition }}</dd>
-          </dl>
-        </section>
-
-        <section aria-labelledby="description-heading">
-          <h2 id="description-heading">Description</h2>
-          <p class="item-detail-description">
-            {{ item.description }}
-          </p>
-        </section>
-
-        <section aria-labelledby="contact-heading">
-          <h2 id="contact-heading">Contact the seller</h2>
-
-          {% if item.contact_info %}
-            <p class="item-detail-contact">
-              {{ item.contact_info }}
-            </p>
-          {% else %}
-            <p>The seller has not provided contact information.</p>
-          {% endif %}
-        </section>
-      </div>
-    </div>
-  </article>
+<h1 id="item-title">{{ item.title }}</h1>
+<p class="item-detail-price price">${{ "%.2f"|format(item.price) }}</p>{% if item.get('original_price') is not none %}
+<p class="item-original-price price">Original price: ${{ "%.2f"|format(item.original_price) }}</p>{% endif %}
+</header>
+    <section aria-labelledby="information-heading">
+<h2 id="information-heading" class="sr-only">Item information</h2>
+<dl class="item-detail-facts">
+<div>
+<dt>Category</dt>
+<dd>{{ item.category }}</dd>
+</div>
+<div>
+<dt>Condition</dt>
+<dd>{{ item.condition }}</dd>
+</div>
+</dl>
+</section>
+    <section aria-labelledby="description-heading">
+<h2 id="description-heading">Description</h2>
+<p class="item-detail-description">{{ item.description }}</p>
+</section>
+    <section class="seller-contact" aria-labelledby="contact-heading">
+<h2 id="contact-heading">Contact the seller</h2>{% if item.contact_info %}
+<p class="item-detail-contact">{{ item.contact_info }}</p>{% else %}
+<p class="item-detail-contact">The seller has not provided contact information.</p>{% endif %}
+</section>
+  </div>
+</div>
+</article>
 {% endblock %}

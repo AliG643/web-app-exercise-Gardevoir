@@ -1,34 +1,24 @@
 {% extends "base.html" %}
-
-{% block title%}Post an item | Gardevoir{%endblock%}
-{%block extra_head%}
-<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">
-{%endblock%}
-
+{% from "_ui.html" import icon %}
+{% block title %}Post an item | Gardevoir{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='item-form.css') }}">{% endblock %}
 {% block content %}
-<section class = "form-card">
-    <h1>Post an item</h1>
-    <p>Fields marked * are required.</p>
-
-    <form
-        class = "item-form"
-        method = "POST"
-        action = "{{ url_for('publish.new_item') }}"
-    >
-        <input
-      type="hidden"
-      name="csrf_token"
-      value="{{ csrf_token }}"
-    >
-
+<section class="form-card">
+  <a class="back-link" href="{{ url_for('market.items') }}">{{ icon('back', 17) }}Back to marketplace</a>
+  <header class="page-heading">
+<div>
+<h1>Post an item</h1>
+<p>Fields marked * are required.</p>
+</div>
+</header>
+  <form class="item-form" method="POST" action="{{ url_for('publish.new_item') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% include "items/_item_form.html" %}
-
-    <button class="primary-button" type="submit">
-      Post item
-    </button>
-
-    <a href="{{ url_for('market.items') }}">Cancel</a>
+    <div class="form-actions">
+<button class="primary-button" type="submit">Post item {{ icon('arrow', 18) }}</button>
+<a class="text-button" href="{{ url_for('market.items') }}">Cancel</a>
+</div>
   </form>
 </section>
 {% endblock %}
-

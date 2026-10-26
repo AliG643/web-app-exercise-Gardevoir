@@ -1,41 +1,52 @@
+{% from "_ui.html" import icon %}
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f8f8f4">
     <title>{% block title %}Gardevoir Marketplace{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     {% block extra_head %}{% endblock %}
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <div class="header-inner">
-        <a class="brand" href="{{ url_for('market.items') }}">Gardevoir</a>
+        <a class="brand" href="{{ url_for('market.items') }}">{{ icon('cycle', 25) }}<span>Gardevoir<span class="brand-dot">.</span></span></a>
         <nav aria-label="Main navigation">
-          <a href="{{ url_for('market.items') }}">Browse</a>
-          <a href="{{ url_for('search.results') }}">Search</a>
+          <div class="nav-pages">
+            <a class="nav-link" href="{{ url_for('market.items') }}" {% if request.blueprint == 'market' %}aria-current="page"{% endif %}>Browse</a>
+            <a class="nav-link" href="{{ url_for('search.results') }}" {% if request.blueprint == 'search' %}aria-current="page"{% endif %}>Search</a>
+            {% if not authentication_unavailable and current_user.is_authenticated %}
+              <a class="nav-link" href="{{ url_for('manage.my_items') }}" {% if request.blueprint == 'manage' %}aria-current="page"{% endif %}>My items</a>
+            {% endif %}
+          </div>
           {% if not authentication_unavailable %}
+          <div class="nav-actions">
             {% if current_user.is_authenticated %}
-              <a href="{{ url_for('publish.new_item') }}">Post</a>
-              <a href="{{ url_for('manage.my_items') }}">My items</a>
               <form action="{{ url_for('auth.logout') }}" method="post" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
                 <button type="submit" class="nav-button">Log out</button>
               </form>
             {% else %}
-              <a href="{{ url_for('auth.login') }}">Log in</a>
+              <a class="nav-link" href="{{ url_for('auth.login') }}" {% if request.blueprint == 'auth' %}aria-current="page"{% endif %}>Log in</a>
             {% endif %}
+            <a class="primary-button nav-post" aria-label="Post an item" href="{{ url_for('publish.new_item') }}" {% if request.blueprint == 'publish' %}aria-current="page"{% endif %}>{{ icon('plus', 18) }}<span class="post-label-long">Post an item</span><span class="post-label-short">Post</span></a>
+          </div>
           {% endif %}
         </nav>
       </div>
     </header>
-    <main class="page-shell">
+    <main id="main-content" class="page-shell" tabindex="-1">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-          <div class="notice notice-{{ category }}" role="alert">{{ message }}</div>
+          <div class="notice notice-{{ category }}" role="alert">{{ icon('alert' if category == 'error' else 'check') }}<span>{{ message }}</span></div>
         {% endfor %}
       {% endwith %}
       {% block content %}{% endblock %}
     </main>
+    <footer class="site-footer"><div class="footer-inner"><span>Gardevoir</span><p>Campus second-hand marketplace.</p><a href="{{ url_for('market.items') }}">Browse items {{ icon('arrow', 16) }}</a></div></footer>
   </body>
 </html>

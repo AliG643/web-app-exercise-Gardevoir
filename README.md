@@ -87,3 +87,9 @@ the same database, set `UPLOAD_FOLDER` in each checkout's private `.env` to the
 same absolute directory containing those photos. Restart Flask after changing
 this value. Other computers need access to both the database and the photo
 storage; cloning the repository alone does not transfer uploaded photos.
+
+Existing PNG photos created by the earlier uploader remain supported, including
+listings with only an `image_url` field. Cached forms using the `image` file
+field and the enhanced `image_file` picker share the same validation and storage
+lifecycle. New uploads are normalized to JPEG with a 12-million-pixel input
+limit. Both formats use one `/uploads/<filename>` route.

@@ -12,7 +12,7 @@ from app.auth import current_owner_id
 from app.db import get_db, parse_object_id
 from app.item_data import CATEGORIES, CONDITIONS, public_item
 from app.item_forms import item_form_values, validate_item
-from app.images import photo_input, image_fields, discard_unreferenced_photo
+from app.images import photo_input, image_fields, discard_unreferenced_photo, managed_photo_key
 
 manage = Blueprint("manage", __name__)
 
@@ -77,7 +77,7 @@ def edit_item(item_id):
 
     item = public_item(document)
     form_values = item_form_values(request.form if request.method == "POST" else document)
-    if request.method == "GET" and document.get("image_key"):
+    if request.method == "GET" and managed_photo_key(document):
         form_values["image_url"] = ""
     errors = {}
     form_error = None
@@ -115,7 +115,7 @@ def edit_item(item_id):
                     result = get_db().items.update_one(update_query, {"$set": changes})
                 except PyMongoError:
                     discard_unreferenced_photo(changes.get("image_key"))
-                    discard_unreferenced_photo(document.get("image_key"))
+                    discard_unreferenced_photo(managed_photo_key(document))
                     if request.headers.get("X-Requested-With") != "XMLHttpRequest":
                         # Preserve the existing recovery page for uncertain writes.
                         raise
@@ -127,7 +127,7 @@ def edit_item(item_id):
                         form_error = "This item changed or was removed. Reload My items before saving again."
                         status_code = 409
                     else:
-                        discard_unreferenced_photo(document.get("image_key"))
+                        discard_unreferenced_photo(managed_photo_key(document))
                         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                             return jsonify(redirect_url=url_for("manage.my_items"))
                         return redirect(url_for("manage.my_items"))
@@ -153,7 +153,7 @@ def delete_item(item_id):
     document = get_db().items.find_one_and_delete(_owned_item_filter(item_id))
     if document is None:
         abort(404)
-    discard_unreferenced_photo(document.get("image_key"))
+    discard_unreferenced_photo(managed_photo_key(document))
     return redirect(url_for("manage.my_items"))
 
 

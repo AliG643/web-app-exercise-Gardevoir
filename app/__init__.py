@@ -39,10 +39,10 @@ def create_app(test_config=None):
     from app.publish import publish
     from app.manage import manage
     from app.search import search
-    from app.images import images
+    from app.uploads import uploads
 
     init_login(app)
-    for blueprint in (auth, market, publish, manage, search, images):
+    for blueprint in (auth, market, publish, manage, search, uploads):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(413)

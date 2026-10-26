@@ -6,22 +6,26 @@ import re
 from uuid import uuid4
 import warnings
 
-from flask import Blueprint, abort, current_app, request, send_from_directory, url_for
+from flask import abort, current_app, request, send_from_directory, url_for
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pymongo.errors import PyMongoError
 
 from app.db import get_db
 
-images = Blueprint("images", __name__)
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
-MAX_IMAGE_PIXELS = 40_000_000
-IMAGE_KEY = re.compile(r"[a-f0-9]{32}\.jpg\Z")
+MAX_IMAGE_PIXELS = 12_000_000
+IMAGE_KEY = re.compile(r"[a-f0-9]{32}\.(?:jpg|png)\Z")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
 
-def read_photo():
+def read_photo(upload=None):
     """Decode and normalize one upload in memory; never trust its MIME type."""
-    files = [photo for photo in request.files.getlist("image_file") if photo.filename]
+    if upload is None:
+        # Accept both cached main forms and the enhanced photo picker.
+        files = [photo for field in ("image_file", "image")
+                 for photo in request.files.getlist(field) if photo.filename]
+    else:
+        files = [upload] if upload.filename else []
     if len(files) > 1:
         raise ValueError("Choose only one product photo.")
     if not files:
@@ -55,6 +59,20 @@ def read_photo():
         raise ValueError("This file could not be read as a photo. Choose another image.") from error
 
 
+def managed_photo_key(document):
+    """Recognize both current keys and main's older server-owned PNG URLs."""
+    document = document or {}
+    key = document.get("image_key")
+    if isinstance(key, str) and IMAGE_KEY.fullmatch(key):
+        return key
+    address = document.get("image_url", "")
+    if isinstance(address, str) and address.startswith("/uploads/"):
+        key = address.removeprefix("/uploads/")
+        if IMAGE_KEY.fullmatch(key):
+            return key
+    return ""
+
+
 def photo_input(form_values, document=None):
     """Return normalized upload bytes and field errors without writing files."""
     errors = {}
@@ -68,7 +86,7 @@ def photo_input(form_values, document=None):
         errors["image_file"] = "Choose a new photo or remove the current photo, not both."
     if photo is not None or remove:
         form_values["image_url"] = ""
-    elif document and document.get("image_key") and form_values["image_url"] == document.get("image_url"):
+    elif document and managed_photo_key(document) and form_values["image_url"] == document.get("image_url"):
         # Older clients may echo the current local URL; it is not a new external link.
         form_values["image_url"] = ""
     return photo, remove, errors
@@ -90,13 +108,13 @@ def image_fields(form_values, photo, remove=False, document=None):
             if created:
                 path.unlink(missing_ok=True)
             raise
-        return {"image_key": key, "image_url": url_for("images.photo", filename=key)}
+        return {"image_key": key, "image_url": url_for("uploads.image", filename=key)}
     if remove:
         return {"image_key": "", "image_url": ""}
     if form_values["image_url"]:
         return {"image_key": "", "image_url": form_values["image_url"]}
     return {
-        "image_key": (document or {}).get("image_key", ""),
+        "image_key": managed_photo_key(document),
         "image_url": (document or {}).get("image_url", ""),
     }
 
@@ -106,7 +124,9 @@ def discard_unreferenced_photo(key):
     if not isinstance(key, str) or not IMAGE_KEY.fullmatch(key):
         return
     try:
-        if get_db().items.find_one({"image_key": key}) is not None:
+        if get_db().items.find_one({"$or": [
+            {"image_key": key}, {"image_url": "/uploads/" + key},
+        ]}) is not None:
             return
     except PyMongoError:
         current_app.logger.warning("Kept product photo because its database state is unknown.")
@@ -117,19 +137,20 @@ def discard_unreferenced_photo(key):
         current_app.logger.exception("Could not clean up an unreferenced product photo.")
 
 
-@images.get("/uploads/<filename>")
 def photo(filename):
     if not IMAGE_KEY.fullmatch(filename):
         abort(404)
     try:
         item = get_db().items.find_one({
-            "image_key": filename, "status": {"$in": ["active", "sold"]},
+            "$or": [{"image_key": filename}, {"image_url": "/uploads/" + filename}],
+            "status": {"$in": ["active", "sold"]},
         })
     except PyMongoError:
         abort(503)
     if item is None:
         abort(404)
     response = send_from_directory(current_app.config["UPLOAD_FOLDER"], filename,
-                                   mimetype="image/jpeg", max_age=3600)
+                                   mimetype="image/png" if filename.endswith(".png") else "image/jpeg",
+                                   max_age=3600)
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response

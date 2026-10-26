@@ -356,3 +356,126 @@ def test_lost_edit_acknowledgement_keeps_the_committed_photo(app, client, item, 
     assert len(stored_files(app)) == 1
     assert client.get(current["image_url"]).status_code == 200
     assert client.get(item["image_url"]).status_code == 404
+
+
+@pytest.fixture
+def legacy_png(app, item):
+    """A listing already created by main's PNG uploader, without image_key."""
+    key = "b" * 32 + ".png"
+    folder = Path(app.config["UPLOAD_FOLDER"])
+    (folder / key).write_bytes(photo_bytes())
+    (folder / item["image_key"]).unlink()
+    collection = app.extensions["mongo_db"].items
+    collection.update_one({"_id": item["_id"]}, {
+        "$set": {"image_url": "/uploads/" + key}, "$unset": {"image_key": ""},
+    })
+    return collection.find_one({"_id": item["_id"]})
+
+
+@pytest.fixture
+def legacy_edit(client, legacy_png, form):
+    assert client.get(f'/items/{legacy_png["_id"]}/edit').status_code == 200
+    with client.session_transaction() as state:
+        token = state["manage_csrf_token"]
+    return {**form, "csrf_token": token}
+
+
+def test_existing_main_png_is_still_served(app, client, legacy_png):
+    response = client.get(legacy_png["image_url"])
+    assert response.status_code == 200
+    assert response.mimetype == "image/png"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    for path in ("/items", f'/items/{legacy_png["_id"]}', "/my-items"):
+        assert legacy_png["image_url"].encode() in client.get(path).data
+
+
+@pytest.mark.parametrize("echo_local_url", [False, True])
+def test_edit_keeps_existing_main_png(app, client, legacy_png, legacy_edit, echo_local_url):
+    response = client.post(f'/items/{legacy_png["_id"]}/edit', data={
+        **legacy_edit, "title": "Updated legacy listing",
+        "image_url": legacy_png["image_url"] if echo_local_url else "",
+    })
+    assert response.status_code == 302
+    current = app.extensions["mongo_db"].items.find_one({"_id": legacy_png["_id"]})
+    assert current["image_url"] == legacy_png["image_url"]
+    assert client.get(current["image_url"]).status_code == 200
+    assert len(stored_files(app)) == 1
+
+
+@pytest.mark.parametrize("action", ["remove", "delete", "replace"])
+def test_existing_main_png_can_be_managed(app, client, legacy_png, legacy_edit, action):
+    if action == "delete":
+        response = client.post(f'/items/{legacy_png["_id"]}/delete', data={"csrf_token": legacy_edit["csrf_token"]})
+    else:
+        fields = {"remove_image": "1"} if action == "remove" else {"image_file": attached()}
+        response = client.post(f'/items/{legacy_png["_id"]}/edit', data={**legacy_edit, **fields})
+    assert response.status_code == 302
+    assert client.get(legacy_png["image_url"]).status_code == 404
+    assert len(stored_files(app)) == (1 if action == "replace" else 0)
+    if action == "replace":
+        current = app.extensions["mongo_db"].items.find_one({"_id": legacy_png["_id"]})
+        assert client.get(current["image_url"]).status_code == 200
+
+
+def test_main_image_form_field_remains_compatible(app, client, form):
+    response = client.post("/items/new", data={**form, "image": attached()})
+    assert response.status_code == 302
+    document = app.extensions["mongo_db"].items.find_one({})
+    assert document["image_url"].startswith("/uploads/")
+    assert client.get(document["image_url"]).status_code == 200
+    assert len(stored_files(app)) == 1
+
+
+def test_two_upload_field_names_do_not_bypass_the_single_photo_limit(app, client, form):
+    response = client.post("/items/new", data={
+        **form, "image_file": attached(), "image": attached(),
+    })
+    assert response.status_code == 400
+    assert b"Choose only one" in response.data
+    assert app.extensions["mongo_db"].items.count_documents({}) == 0
+    assert stored_files(app) == []
+
+
+def test_unreferenced_main_png_is_not_public(app, client):
+    folder = Path(app.config["UPLOAD_FOLDER"])
+    folder.mkdir()
+    key = "c" * 32 + ".png"
+    (folder / key).write_bytes(photo_bytes())
+    assert client.get("/uploads/" + key).status_code == 404
+
+
+def test_main_upload_helper_uses_shared_storage(app):
+    from werkzeug.datastructures import FileStorage
+    from app.uploads import save_item_image
+
+    with app.test_request_context('/'):
+        existing = '/uploads/' + 'd' * 32 + '.png'
+        assert save_item_image(None, existing_url=existing) == existing
+        address = save_item_image(FileStorage(stream=BytesIO(photo_bytes()), filename='lamp.png'))
+    assert address.startswith('/uploads/')
+    with Image.open(stored_files(app)[0]) as image:
+        assert image.format == 'JPEG'
+
+
+def test_main_upload_helper_preserves_validation_errors(app):
+    from werkzeug.datastructures import FileStorage
+    from app.uploads import ImageUploadError, save_item_image
+
+    with app.test_request_context('/'):
+        with pytest.raises(ImageUploadError):
+            save_item_image(FileStorage(stream=BytesIO(b'not a photo'), filename='fake.png'))
+    assert stored_files(app) == []
+
+
+def test_shared_main_png_is_kept_until_its_last_listing_is_deleted(app, client, legacy_png, legacy_edit):
+    collection = app.extensions['mongo_db'].items
+    copy = {key: value for key, value in legacy_png.items() if key != '_id'}
+    other_id = collection.insert_one(copy).inserted_id
+    assert client.post(f'/items/{legacy_png["_id"]}/delete', data={
+        'csrf_token': legacy_edit['csrf_token'],
+    }).status_code == 302
+    assert client.get(legacy_png['image_url']).status_code == 200
+    assert client.post(f'/items/{other_id}/delete', data={
+        'csrf_token': legacy_edit['csrf_token'],
+    }).status_code == 302
+    assert stored_files(app) == []

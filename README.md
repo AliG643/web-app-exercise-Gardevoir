@@ -73,3 +73,23 @@ Issues are enabled. The team still needs to record its user stories and maintain
    Open `http://127.0.0.1:5000`. Register an account to access the protected pages. To give the sample items to that account for management testing, run `flask --app app seed-demo --owner-email your-email@example.edu` after registering.
 
 To stop the local database, run `docker compose down`. The named volume preserves data between runs. For test dependencies, run `python -m pip install -r requirements-dev.txt` and then `python -m pytest -q`.
+
+## Product photos
+
+Publishing and editing support one JPG, PNG, or WebP photo up to 5 MB, with
+preview, replacement, removal, and an optional external image URL. Files are
+verified and normalized to JPEG; upload and edit validation preserve existing
+photos when saving fails. The form also works without JavaScript.
+
+Photos are stored in `instance/uploads/` by default and are excluded from Git.
+MongoDB stores a reference, not the photo itself. When multiple checkouts use
+the same database, set `UPLOAD_FOLDER` in each checkout's private `.env` to the
+same absolute directory containing those photos. Restart Flask after changing
+this value. Other computers need access to both the database and the photo
+storage; cloning the repository alone does not transfer uploaded photos.
+
+Existing PNG photos created by the earlier uploader remain supported, including
+listings with only an `image_url` field. Cached forms using the `image` file
+field and the enhanced `image_file` picker share the same validation and storage
+lifecycle. New uploads are normalized to JPEG with a 12-million-pixel input
+limit. Both formats use one `/uploads/<filename>` route.

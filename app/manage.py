@@ -4,14 +4,16 @@ from datetime import datetime, timezone
 from hmac import compare_digest
 from secrets import token_urlsafe
 
-from flask import Blueprint, abort, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
 from flask_login import login_required
+from pymongo.errors import PyMongoError
 
 from app.auth import current_owner_id
 from app.db import get_db, parse_object_id
 from app.item_data import CATEGORIES, CONDITIONS, public_item
 from app.item_forms import item_form_values, validate_item
-from app.uploads import ImageUploadError,save_item_image
+from app.images import photo_input, image_fields, discard_unreferenced_photo, managed_photo_key
+
 manage = Blueprint("manage", __name__)
 
 
@@ -70,49 +72,25 @@ def edit_item(item_id):
 
     query = _owned_item_filter(item_id)
     document = get_db().items.find_one(query)
-
     if document is None:
         abort(404)
 
     item = public_item(document)
-    form_values = item_form_values(
-        request.form if request.method == "POST" else document
-    )
-
+    form_values = item_form_values(request.form if request.method == "POST" else document)
+    if request.method == "GET" and managed_photo_key(document):
+        form_values["image_url"] = ""
     errors = {}
+    form_error = None
     status_code = 200
 
     if request.method == "POST":
-        # Validate text fields without treating the stored image
-        # address as a user-entered URL.
-        form_values["image_url"] = ""
+        photo, remove, photo_errors = photo_input(form_values, document)
         errors, price = validate_item(form_values)
-
-        image_url = document.get("image_url", "")
-
-        if not errors:
-            try:
-                image_url = save_item_image(
-                    request.files.get("image"),
-                    existing_url=image_url,
-                )
-            except ImageUploadError as error:
-                errors["image"] = str(error)
-            except OSError:
-                current_app.logger.exception(
-                    "Unable to save replacement photo"
-                )
-                errors["image"] = (
-                    "Photo storage is temporarily unavailable."
-                )
-                status_code = 503
-
+        errors.update(photo_errors)
         if errors:
-            if status_code != 503:
-                status_code = 400
-        else:
+            status_code = 400
+        if not errors:
             changes = form_values.copy()
-            changes["image_url"] = image_url
             changes["price"] = price
             changes["original_price"] = (
                 float(form_values["original_price"])
@@ -121,15 +99,38 @@ def edit_item(item_id):
             )
             changes["updated_at"] = datetime.now(timezone.utc)
 
-            result = get_db().items.update_one(
-                query,
-                {"$set": changes},
-            )
-
-            if result.matched_count == 0:
-                abort(404)
-
-            return redirect(url_for("manage.my_items"))
+            try:
+                changes.update(image_fields(form_values, photo, remove, document))
+            except OSError:
+                form_error = "Your photo could not be saved. Please try again."
+                status_code = 503
+            else:
+                # Prevent a concurrent edit from restoring an already-replaced photo.
+                update_query = {
+                    **query,
+                    "image_key": document.get("image_key"),
+                    "image_url": document.get("image_url"),
+                }
+                try:
+                    result = get_db().items.update_one(update_query, {"$set": changes})
+                except PyMongoError:
+                    discard_unreferenced_photo(changes.get("image_key"))
+                    discard_unreferenced_photo(managed_photo_key(document))
+                    if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+                        # Preserve the existing recovery page for uncertain writes.
+                        raise
+                    form_error = "We could not confirm your changes. Check My items before trying again."
+                    status_code = 503
+                else:
+                    if result.matched_count == 0:
+                        discard_unreferenced_photo(changes.get("image_key"))
+                        form_error = "This item changed or was removed. Reload My items before saving again."
+                        status_code = 409
+                    else:
+                        discard_unreferenced_photo(managed_photo_key(document))
+                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                            return jsonify(redirect_url=url_for("manage.my_items"))
+                        return redirect(url_for("manage.my_items"))
 
     return render_template(
         "manage/my_items.html",
@@ -140,15 +141,19 @@ def edit_item(item_id):
         categories=CATEGORIES,
         conditions=CONDITIONS,
         csrf_token=_csrf_token(),
+        current_image_url=document.get("image_url", ""),
+        form_error=form_error,
     ), status_code
+
 
 @manage.post("/items/<item_id>/delete")
 @login_required
 def delete_item(item_id):
     _require_csrf_token()
-    result = get_db().items.delete_one(_owned_item_filter(item_id))
-    if result.deleted_count == 0:
+    document = get_db().items.find_one_and_delete(_owned_item_filter(item_id))
+    if document is None:
         abort(404)
+    discard_unreferenced_photo(managed_photo_key(document))
     return redirect(url_for("manage.my_items"))
 
 

@@ -1,12 +1,13 @@
 """Application factory and route registration for Gardevoir."""
 
 import os
+from pathlib import Path
 
 import click
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, url_for
+from flask import Flask, redirect, render_template, request, url_for
 from pymongo.errors import PyMongoError
-from app.uploads import uploads
+
 from app.db import init_db
 from app.messages import messages
 
@@ -35,10 +36,15 @@ def create_app(test_config=None):
     from app.publish import publish
     from app.manage import manage
     from app.search import search
+    from app.uploads import uploads
 
     init_login(app)
-    for blueprint in (auth, market, publish, manage, search,uploads,messages):
+    for blueprint in (auth, market, publish, manage, search,uploads):
         app.register_blueprint(blueprint)
+
+    @app.errorhandler(413)
+    def upload_too_large(error):
+        return render_template("upload_too_large.html"), 413
 
     @app.errorhandler(PyMongoError)
     def database_unavailable(error):

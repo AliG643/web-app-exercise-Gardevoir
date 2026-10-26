@@ -21,6 +21,13 @@ Gardevoir keeps its yellow accent and familiar marketplace workflows. The fronte
 
 ## Verification
 
+Run `node --test tests/client/item-form.test.cjs` with Node.js 24 or newer for
+client-side photo recovery checks. These execute the shipped form event handlers
+with a small DOM/network fixture and require no npm packages. They cover rejecting
+an oversized, unsupported, or empty photo, discarding it through a visible control,
+keeping entered text or the existing photo, and submitting without a replacement.
+The Client tests workflow runs them on pull requests to main.
+
 Run `python -m pytest -q` using `requirements-dev.txt`. Tests use mongomock. Browser QA should also cover 320px, 390px, 768px and a desktop width: browse, search, detail, account forms, posting, editing, My items, empty results, field errors and the database fallback. Confirm keyboard focus, long content, photo/no-photo states and no document-level horizontal scrolling.
 
 Local photo upload is integrated with the grouped item form. It supports preview, replacement, removal, native form submission, and the existing image-link option. When checkouts share MongoDB, configure their private `.env` files with the same absolute `UPLOAD_FOLDER`; images remain excluded from Git. The detail image uses `height: auto` so the HTML 640px dimensions do not push titles below the mobile viewport.

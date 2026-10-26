@@ -36,7 +36,7 @@ document.querySelectorAll(".item-form").forEach((form) => {
     empty.hidden = !!source;
     if (source) preview.src = source;
     else preview.removeAttribute("src");
-    reset.hidden = !file && !remove?.checked && link.value === originalLink;
+    reset.hidden = !invalidPhoto && !file && !remove?.checked && link.value === originalLink;
   };
   const selected = () => {
     invalidPhoto = false;

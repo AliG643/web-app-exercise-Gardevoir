@@ -6,6 +6,7 @@ from flask import (
     Blueprint,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -13,12 +14,14 @@ from flask import (
     url_for,
 )
 from flask_login import login_required
+from bson import ObjectId
 from pymongo.errors import PyMongoError
 
 from app.auth import current_owner_id
 from app.db import get_db
 from app.item_data import CATEGORIES, CONDITIONS
 from app.item_forms import item_form_values, validate_item
+from app.images import photo_input, image_fields, discard_unreferenced_photo
 
 
 publish = Blueprint("publish", __name__)
@@ -57,9 +60,12 @@ def new_item():
 
     errors = {}
     status_code = 200
+    form_error = None
 
     if request.method == "POST":
+        photo, remove, photo_errors = photo_input(form_values)
         errors, price = validate_item(form_values)
+        errors.update(photo_errors)
 
         if errors:
             status_code = 400
@@ -77,22 +83,29 @@ def new_item():
             item["status"] = "active"
             item["created_at"] = now
             item["updated_at"] = now
+            item["_id"] = ObjectId()
 
             try:
-                result = get_db().items.insert_one(item)
-            except PyMongoError:
-                flash(
-                    "We could not confirm your post. Check My items "
-                    "before trying again to avoid a duplicate. "
-                    "Your entries are kept below.",
-                    "error",
-                )
+                item.update(image_fields(form_values, photo, remove))
+            except OSError:
+                form_error = "Your photo could not be saved. Please try again."
                 status_code = 503
             else:
-                flash("Your item has been posted.", "success")
-                return redirect(
-                    url_for("market.item_detail", item_id=str(result.inserted_id))
-                )
+                try:
+                    get_db().items.insert_one(item)
+                except PyMongoError:
+                    discard_unreferenced_photo(item.get("image_key"))
+                    form_error = (
+                        "We could not confirm your post. Check My items before trying "
+                        "again to avoid a duplicate. Your entries are kept below."
+                    )
+                    status_code = 503
+                else:
+                    flash("Your item has been posted.", "success")
+                    destination = url_for("market.item_detail", item_id=str(item["_id"]))
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return jsonify(redirect_url=destination)
+                    return redirect(destination)
 
     return render_template(
         "publish/new_item.html",
@@ -101,4 +114,6 @@ def new_item():
         categories=CATEGORIES,
         conditions=CONDITIONS,
         csrf_token=session["publish_csrf_token"],
+        form_error=form_error,
+        current_image_url="",
     ), status_code

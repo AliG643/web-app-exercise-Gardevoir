@@ -1,6 +1,6 @@
 # Frontend UI conventions
 
-Gardevoir keeps its yellow accent and familiar marketplace workflows. The frontend uses local CSS and inline SVG macros, with no font service, JavaScript framework, or additional runtime dependency.
+Gardevoir keeps its yellow accent and familiar marketplace workflows. The frontend uses local CSS and inline SVG macros, with no font service or JavaScript framework. Photo selection uses progressive JavaScript enhancement; the server validates uploads with Pillow.
 
 ## Shared system
 
@@ -23,4 +23,4 @@ Gardevoir keeps its yellow accent and familiar marketplace workflows. The fronte
 
 Run `python -m pytest -q` using `requirements-dev.txt`. Tests use mongomock. Browser QA should also cover 320px, 390px, 768px and a desktop width: browse, search, detail, account forms, posting, editing, My items, empty results, field errors and the database fallback. Confirm keyboard focus, long content, photo/no-photo states and no document-level horizontal scrolling.
 
-This UI change is based on main with PRs #16 and #17. Local file-upload work is maintained separately and is not part of this branch.
+Local photo upload is integrated with the grouped item form. It supports preview, replacement, removal, native form submission, and the existing image-link option. When checkouts share MongoDB, configure their private `.env` files with the same absolute `UPLOAD_FOLDER`; images remain excluded from Git. The detail image uses `height: auto` so the HTML 640px dimensions do not push titles below the mobile viewport.

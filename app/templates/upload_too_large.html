@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Photo too large | Gardevoir{% endblock %}
+{% block content %}
+<section class="form-card">
+  <header class="page-heading"><div>
+    <h1>Photo too large</h1>
+    <p>Choose one JPG, PNG, or WebP photo up to 5 MB, then try again.</p>
+  </div></header>
+  <a class="primary-button" href="{{ url_for('publish.new_item') }}">Return to posting</a>
+</section>
+{% endblock %}

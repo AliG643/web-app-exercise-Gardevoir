@@ -1,10 +1,11 @@
 """Application factory and route registration for Gardevoir."""
 
 import os
+from pathlib import Path
 
 import click
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, url_for
+from flask import Flask, redirect, render_template, request, url_for
 from pymongo.errors import PyMongoError
 
 from app.db import init_db
@@ -17,6 +18,11 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv("SECRET_KEY"),
         MONGODB_URI=os.getenv("MONGODB_URI"),
         MONGODB_DB=os.getenv("MONGODB_DB", "gardevoir_secondhand"),
+        UPLOAD_FOLDER=str(
+            Path(os.getenv("UPLOAD_FOLDER") or Path(app.instance_path) / "uploads")
+            .expanduser().resolve()
+        ),
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
     )
     if test_config:
         app.config.update(test_config)
@@ -33,10 +39,15 @@ def create_app(test_config=None):
     from app.publish import publish
     from app.manage import manage
     from app.search import search
+    from app.images import images
 
     init_login(app)
-    for blueprint in (auth, market, publish, manage, search):
+    for blueprint in (auth, market, publish, manage, search, images):
         app.register_blueprint(blueprint)
+
+    @app.errorhandler(413)
+    def upload_too_large(error):
+        return render_template("upload_too_large.html"), 413
 
     @app.errorhandler(PyMongoError)
     def database_unavailable(error):

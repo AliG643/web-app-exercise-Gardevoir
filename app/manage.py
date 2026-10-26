@@ -11,7 +11,7 @@ from app.auth import current_owner_id
 from app.db import get_db, parse_object_id
 from app.item_data import CATEGORIES, CONDITIONS, public_item
 from app.item_forms import item_form_values, validate_item
-
+from app.uploads import ImageUploadError,save_item_image
 manage = Blueprint("manage", __name__)
 
 
@@ -70,17 +70,49 @@ def edit_item(item_id):
 
     query = _owned_item_filter(item_id)
     document = get_db().items.find_one(query)
+
     if document is None:
         abort(404)
 
     item = public_item(document)
-    form_values = item_form_values(request.form if request.method == "POST" else document)
+    form_values = item_form_values(
+        request.form if request.method == "POST" else document
+    )
+
     errors = {}
+    status_code = 200
 
     if request.method == "POST":
+        # Validate text fields without treating the stored image
+        # address as a user-entered URL.
+        form_values["image_url"] = ""
         errors, price = validate_item(form_values)
+
+        image_url = document.get("image_url", "")
+
         if not errors:
+            try:
+                image_url = save_item_image(
+                    request.files.get("image"),
+                    existing_url=image_url,
+                )
+            except ImageUploadError as error:
+                errors["image"] = str(error)
+            except OSError:
+                current_app.logger.exception(
+                    "Unable to save replacement photo"
+                )
+                errors["image"] = (
+                    "Photo storage is temporarily unavailable."
+                )
+                status_code = 503
+
+        if errors:
+            if status_code != 503:
+                status_code = 400
+        else:
             changes = form_values.copy()
+            changes["image_url"] = image_url
             changes["price"] = price
             changes["original_price"] = (
                 float(form_values["original_price"])
@@ -89,9 +121,14 @@ def edit_item(item_id):
             )
             changes["updated_at"] = datetime.now(timezone.utc)
 
-            result = get_db().items.update_one(query, {"$set": changes})
+            result = get_db().items.update_one(
+                query,
+                {"$set": changes},
+            )
+
             if result.matched_count == 0:
                 abort(404)
+
             return redirect(url_for("manage.my_items"))
 
     return render_template(
@@ -103,8 +140,7 @@ def edit_item(item_id):
         categories=CATEGORIES,
         conditions=CONDITIONS,
         csrf_token=_csrf_token(),
-    ), (400 if errors else 200)
-
+    ), status_code
 
 @manage.post("/items/<item_id>/delete")
 @login_required

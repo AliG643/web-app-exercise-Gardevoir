@@ -6,7 +6,7 @@ import click
 from dotenv import load_dotenv
 from flask import Flask, redirect, request, url_for
 from pymongo.errors import PyMongoError
-
+from app.uploads import uploads
 from app.db import init_db
 
 
@@ -17,6 +17,8 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv("SECRET_KEY"),
         MONGODB_URI=os.getenv("MONGODB_URI"),
         MONGODB_DB=os.getenv("MONGODB_DB", "gardevoir_secondhand"),
+        UPLOAD_FOLDER=os.path.join(app.instance_path,"uploads"),
+        MAX_CONTENT_LENGTH=6*1024*1024
     )
     if test_config:
         app.config.update(test_config)
@@ -35,7 +37,7 @@ def create_app(test_config=None):
     from app.search import search
 
     init_login(app)
-    for blueprint in (auth, market, publish, manage, search):
+    for blueprint in (auth, market, publish, manage, search,uploads):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(PyMongoError)

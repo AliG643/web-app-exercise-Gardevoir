@@ -3,7 +3,7 @@
 Feature owners can import these constants without editing a shared route file.
 """
 
-CATEGORIES = ("Electronics", "Books", "Furniture", "Clothing", "Other")
+CATEGORIES = ("Electronics", "Books", "Furniture", "Clothing","Plush toys", "Other")
 CONDITIONS = ("New", "Like New", "Good", "Fair")
 STATUSES = ("active", "sold")
 

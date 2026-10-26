@@ -50,9 +50,32 @@
 <fieldset class="form-section">
 <legend>Photo &amp; contact</legend>
   <div class="form-field">
-<label for="image_url">Image URL</label>
-<input id="image_url" name="image_url" type="url" maxlength="2048" value="{{ form_values.image_url }}" {% if errors.image_url %}aria-invalid="true" aria-describedby="image_url-error"{% endif %}>{{ field_error('image_url', errors) }}</div>
+<label for="image">Product photo (optional)</label>
+    <input
+      id="image"
+      name="image"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      {% if errors.image %}
+        aria-invalid="true"
+        aria-describedby="image-error"
+      {% endif %}>
+
+    {{ field_error('image', errors) }}
+  </div>
   <div class="form-field">
-<label for="contact_info">Contact information (optional)</label>
-<input id="contact_info" name="contact_info" type="text" maxlength="200" value="{{ form_values.contact_info }}" {% if errors.contact_info %}aria-invalid="true" aria-describedby="contact_info-error"{% endif %}>{{ field_error('contact_info', errors) }}</div>
+    <label for="contact_info">Contact information (optional)</label>
+    <input
+      id="contact_info"
+      name="contact_info"
+      type="text"
+      maxlength="200"
+      value="{{ form_values.contact_info }}"
+      {% if errors.contact_info %}
+        aria-invalid="true"
+        aria-describedby="contact_info-error"
+      {% endif %}>
+    {{ field_error('contact_info', errors) }}
+  </div>
 </fieldset>
+

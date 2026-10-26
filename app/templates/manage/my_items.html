@@ -14,7 +14,7 @@
 <p>Fields marked * are required.</p>
 </div>
 </header>
-  <form class="item-form" method="post" action="{{ url_for('manage.edit_item', item_id=item.id) }}">
+  <form class="item-form" method="post" action="{{ url_for('manage.edit_item', item_id=item.id) }}" enctype="multipart/form-data">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% include "items/_item_form.html" %}
 <div class="form-actions">
 <button class="primary-button" type="submit">Save changes {{ icon('check', 18) }}</button>

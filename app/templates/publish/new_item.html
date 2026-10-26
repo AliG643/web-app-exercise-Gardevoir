@@ -12,7 +12,7 @@
 <p>Fields marked * are required.</p>
 </div>
 </header>
-  <form class="item-form" method="POST" action="{{ url_for('publish.new_item') }}">
+  <form class="item-form" method="POST" action="{{ url_for('publish.new_item') }}" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% include "items/_item_form.html" %}
     <div class="form-actions">

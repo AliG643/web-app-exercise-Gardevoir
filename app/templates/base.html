@@ -14,15 +14,17 @@
         <nav aria-label="Main navigation">
           <a href="{{ url_for('market.items') }}">Browse</a>
           <a href="{{ url_for('search.results') }}">Search</a>
-          {% if current_user.is_authenticated %}
-            <a href="{{ url_for('publish.new_item') }}">Post</a>
-            <a href="{{ url_for('manage.my_items') }}">My items</a>
-            <form action="{{ url_for('auth.logout') }}" method="post" class="inline-form">
-              <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
-              <button type="submit" class="nav-button">Log out</button>
-            </form>
-          {% else %}
-            <a href="{{ url_for('auth.login') }}">Log in</a>
+          {% if not authentication_unavailable %}
+            {% if current_user.is_authenticated %}
+              <a href="{{ url_for('publish.new_item') }}">Post</a>
+              <a href="{{ url_for('manage.my_items') }}">My items</a>
+              <form action="{{ url_for('auth.logout') }}" method="post" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
+                <button type="submit" class="nav-button">Log out</button>
+              </form>
+            {% else %}
+              <a href="{{ url_for('auth.login') }}">Log in</a>
+            {% endif %}
           {% endif %}
         </nav>
       </div>

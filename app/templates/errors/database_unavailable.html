@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Temporarily unavailable | Gardevoir{% endblock %}
+{% block content %}
+  <section class="form-card" aria-labelledby="unavailable-title">
+    <h1 id="unavailable-title">Temporarily unavailable</h1>
+    {% if request.method == 'POST' %}
+      <p role="alert">We couldn't confirm the result of your request.</p>
+      <p>Your last action may already have completed. Check your account or listings before submitting it again.</p>
+      <p><a href="{{ url_for('manage.my_items') }}">Check My items</a></p>
+      <p><a href="{{ url_for('auth.login') }}">Go to log in</a></p>
+    {% else %}
+      <p role="alert">We couldn't load this page. Please try again shortly.</p>
+      <p><a href="{{ retry_url }}">Try again</a></p>
+    {% endif %}
+  </section>
+{% endblock %}

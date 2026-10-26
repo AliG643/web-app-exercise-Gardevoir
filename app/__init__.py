@@ -4,7 +4,8 @@ import os
 
 import click
 from dotenv import load_dotenv
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, request, url_for
+from pymongo.errors import PyMongoError
 
 from app.db import init_db
 
@@ -36,6 +37,17 @@ def create_app(test_config=None):
     init_login(app)
     for blueprint in (auth, market, publish, manage, search):
         app.register_blueprint(blueprint)
+
+    @app.errorhandler(PyMongoError)
+    def database_unavailable(error):
+        app.logger.exception("Unable to complete a database operation")
+        # Flask-Login's template context processor may repeat the failed lookup.
+        # Render this fallback without request-specific context processors.
+        template = app.jinja_env.get_template("errors/database_unavailable.html")
+        return template.render(
+            authentication_unavailable=True,
+            retry_url=request.full_path if request.query_string else request.path,
+        ), 503, {"Cache-Control": "no-store"}
 
     @app.get("/")
     def index():

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import re
-from pathlib import Path
-from uuid import uuid4
-=======
+
 """Marketplace upload API shared by existing main clients and the new picker.
 >>>>>>> origin/main
 
@@ -31,7 +27,6 @@ def save_item_image(upload, existing_url=""):
     """Keep the main uploader's callable API and use shared verified storage."""
     if upload is None or not upload.filename:
         return existing_url
-<<<<<<< HEAD
 
     # Validate and decode the actual image contents.
     try:
@@ -77,13 +72,11 @@ def save_item_image(upload, existing_url=""):
         picture.close()
 
     return url_for("uploads.image", filename=filename)
-=======
     try:
         normalized = read_photo(upload)
     except ValueError as error:
         raise ImageUploadError(str(error)) from error
     return image_fields({}, normalized)["image_url"]
->>>>>>> origin/main
 
 
 @uploads.get("/uploads/<filename>")

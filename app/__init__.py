@@ -39,7 +39,7 @@ def create_app(test_config=None):
     from app.uploads import uploads
 
     init_login(app)
-    for blueprint in (auth, market, publish, manage, search,uploads):
+    for blueprint in (auth, market, publish, manage, search,uploads,messages):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(413)

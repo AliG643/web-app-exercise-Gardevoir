@@ -41,6 +41,18 @@
 >
 <small>Enter a price greater than zero.</small>
 
+<label for="original_price">Original price (USD, optional)</label>
+<input
+  id="original_price"
+  name="original_price"
+  type="number"
+  min="0"
+  step="any"
+  inputmode="decimal"
+  value="{{ form_values.get('original_price', '') }}"
+>
+<small>Enter the original purchase price if known.</small>
+
 <label for="category">Category *</label>
 <select id="category" name="category" required>
   <option value="">Choose a category</option>

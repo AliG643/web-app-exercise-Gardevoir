@@ -185,3 +185,143 @@ def test_database_error_keeps_form_values(app, client, form, monkeypatch):
     assert b"Test lamp" in response.data
     assert b"A working desk lamp." in response.data
     assert collection.count_documents({}) == 0
+
+
+def test_original_price_is_saved_as_number_and_shown(app, client, form):
+    form["original_price"] = "40.25"
+    response = client.post("/items/new", data=form)
+
+    assert response.status_code == 302
+    item = app.extensions["mongo_db"].items.find_one({})
+    assert item["original_price"] == 40.25
+    assert isinstance(item["original_price"], float)
+    assert item["price"] == 12.5
+
+    detail = client.get(response.location)
+    assert detail.status_code == 200
+    assert b"Original price: $40.25" in detail.data
+    assert b"$12.50" in detail.data
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_original_price_is_optional(app, client, form, value):
+    if value is not None:
+        form["original_price"] = value
+
+    response = client.post("/items/new", data=form)
+
+    assert response.status_code == 302
+    item = app.extensions["mongo_db"].items.find_one({})
+    assert item["original_price"] is None
+
+    detail = client.get(response.location)
+    assert detail.status_code == 200
+    assert b"Original price:" not in detail.data
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "abc", "nan", "inf", "-inf", "1e309"])
+def test_original_price_rejects_invalid_values(app, client, form, value):
+    form["original_price"] = value
+    response = client.post("/items/new", data=form)
+
+    assert response.status_code == 400
+    assert b"Please enter an original price greater than zero." in response.data
+    assert b"Test lamp" in response.data
+    assert b"A working desk lamp." in response.data
+    assert app.extensions["mongo_db"].items.count_documents({}) == 0
+
+
+def test_original_price_can_be_edited_and_cleared(app, client, form):
+    form["original_price"] = "40.25"
+    assert client.post("/items/new", data=form).status_code == 302
+
+    collection = app.extensions["mongo_db"].items
+    item = collection.find_one({})
+    edit_url = f'/items/{item["_id"]}/edit'
+    detail_url = f'/items/{item["_id"]}'
+
+    edit_page = client.get(edit_url)
+    assert edit_page.status_code == 200
+    assert b'value="40.25"' in edit_page.data
+
+    with client.session_transaction() as session:
+        token = session["manage_csrf_token"]
+
+    changes = {**form, "csrf_token": token, "original_price": "60.75"}
+    assert client.post(edit_url, data=changes).status_code == 302
+
+    updated = collection.find_one({"_id": item["_id"]})
+    assert updated["original_price"] == 60.75
+    assert updated["price"] == 12.5
+    assert b"Original price: $60.75" in client.get(detail_url).data
+
+    changes["original_price"] = ""
+    assert client.post(edit_url, data=changes).status_code == 302
+
+    updated = collection.find_one({"_id": item["_id"]})
+    assert updated["original_price"] is None
+    assert updated["price"] == 12.5
+    assert b"Original price:" not in client.get(detail_url).data
+
+
+@pytest.mark.parametrize("value", ["0", "nan", "bad"])
+def test_original_price_invalid_edit_keeps_saved_item(app, client, form, value):
+    form["original_price"] = "40.25"
+    assert client.post("/items/new", data=form).status_code == 302
+
+    collection = app.extensions["mongo_db"].items
+    item = collection.find_one({})
+    edit_url = f'/items/{item["_id"]}/edit'
+    assert client.get(edit_url).status_code == 200
+
+    with client.session_transaction() as session:
+        token = session["manage_csrf_token"]
+
+    changes = {
+        **form,
+        "csrf_token": token,
+        "original_price": value,
+        "title": "This change should not be saved",
+    }
+    response = client.post(edit_url, data=changes)
+
+    assert response.status_code == 400
+    assert b"Please enter an original price greater than zero." in response.data
+    updated = collection.find_one({"_id": item["_id"]})
+    assert updated["original_price"] == 40.25
+    assert updated["title"] == item["title"]
+
+
+@pytest.mark.parametrize("stored_value", ["missing", "null"])
+def test_original_price_works_with_existing_items(app, client, form, stored_value):
+    assert client.post("/items/new", data=form).status_code == 302
+
+    collection = app.extensions["mongo_db"].items
+    item = collection.find_one({})
+
+    if stored_value == "missing":
+        collection.update_one(
+            {"_id": item["_id"]},
+            {"$unset": {"original_price": ""}},
+        )
+    else:
+        collection.update_one(
+            {"_id": item["_id"]},
+            {"$set": {"original_price": None}},
+        )
+
+    detail_url = f'/items/{item["_id"]}'
+    detail = client.get(detail_url)
+    assert detail.status_code == 200
+    assert b"Original price:" not in detail.data
+
+    edit_url = f'/items/{item["_id"]}/edit'
+    assert client.get(edit_url).status_code == 200
+
+    with client.session_transaction() as session:
+        token = session["manage_csrf_token"]
+
+    changes = {**form, "csrf_token": token, "original_price": "70.25"}
+    assert client.post(edit_url, data=changes).status_code == 302
+    assert collection.find_one({"_id": item["_id"]})["original_price"] == 70.25
+    assert b"Original price: $70.25" in client.get(detail_url).data

@@ -21,8 +21,13 @@
       <p class="item-detail-price">
         ${{ "%.2f"|format(item.price) }}
       </p>
-    </header>
 
+      {% if item.get("original_price") is not none %}
+        <p>
+          Original price: ${{ "%.2f"|format(item.original_price) }}
+        </p>
+      {% endif %}
+    </header>
     <div class="item-detail-layout">
       <div class="item-detail-media">
         {% if item.image_url %}

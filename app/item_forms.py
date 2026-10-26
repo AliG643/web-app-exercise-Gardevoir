@@ -8,6 +8,7 @@ ITEM_FIELDS = (
     "title",
     "description",
     "price",
+    "original_price",
     "category",
     "condition",
     "image_url",
@@ -50,6 +51,19 @@ def validate_item(values):
     if price is None or not math.isfinite(price) or price <= 0:
         errors["price"] = "Please enter a price greater than zero."
 
+    original_price_text = values.get("original_price", "")
+    if original_price_text:
+        try:
+            original_price = float(original_price_text)
+        except ValueError:
+            original_price = None
+
+        if (
+            original_price is None
+            or not math.isfinite(original_price)
+            or original_price <= 0
+        ):
+            errors["original_price"] = "Please enter an original price greater than zero."
     if values["category"] not in CATEGORIES:
         errors["category"] = "Please select a valid category."
 

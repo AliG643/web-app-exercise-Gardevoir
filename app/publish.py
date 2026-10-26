@@ -68,6 +68,11 @@ def new_item():
 
             item = form_values.copy()
             item["price"] = price
+            item["original_price"] = (
+                float(form_values["original_price"])
+                if form_values["original_price"]
+                else None
+            )
             item["owner_id"] = owner_id
             item["status"] = "active"
             item["created_at"] = now

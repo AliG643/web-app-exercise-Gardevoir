@@ -9,7 +9,7 @@ from flask import Flask, redirect, render_template, request, url_for
 from pymongo.errors import PyMongoError
 
 from app.db import init_db
-
+from app.messages import messages
 
 def create_app(test_config=None):
     load_dotenv()
@@ -18,11 +18,8 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv("SECRET_KEY"),
         MONGODB_URI=os.getenv("MONGODB_URI"),
         MONGODB_DB=os.getenv("MONGODB_DB", "gardevoir_secondhand"),
-        UPLOAD_FOLDER=str(
-            Path(os.getenv("UPLOAD_FOLDER") or Path(app.instance_path) / "uploads")
-            .expanduser().resolve()
-        ),
-        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
+        UPLOAD_FOLDER=os.path.join(app.instance_path,"uploads"),
+        MAX_CONTENT_LENGTH=None
     )
     if test_config:
         app.config.update(test_config)
@@ -42,7 +39,7 @@ def create_app(test_config=None):
     from app.uploads import uploads
 
     init_login(app)
-    for blueprint in (auth, market, publish, manage, search, uploads):
+    for blueprint in (auth, market, publish, manage, search,uploads,messages):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(413)
@@ -80,6 +77,16 @@ def create_app(test_config=None):
         db.items.create_index([("status", 1), ("created_at", -1)])
         db.items.create_index([("owner_id", 1), ("status", 1)])
         click.echo("MongoDB indexes are ready.")
+        db.conversations.create_index(
+        [("item_id", 1), ("buyer_id", 1), ("seller_id", 1)],
+        unique=True,
+        )
+
+        db.messages.create_index([
+            ("conversation_id", 1),
+            ("created_at", 1),
+            ("_id", 1),
+        ])
 
     @app.cli.command("seed-demo")
     @click.option("--owner-email", help="Assign samples to an existing registered user.")

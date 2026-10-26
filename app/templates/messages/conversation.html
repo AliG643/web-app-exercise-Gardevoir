@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Messages | Gardevoir{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='item-form.css') }}">
+{% endblock %}
+
+{% block content %}
+  <a href="{{ url_for('messages.inbox') }}">
+    Back to messages
+  </a>
+
+  <h1>{{ conversation.item_title }}</h1>
+  <p>Talking with {{ partner_name }}</p>
+
+  <ol aria-label="Conversation">
+    {% for entry in thread_messages %}
+      <li>
+        <strong>
+          {{ "You" if entry.mine else partner_name }}
+        </strong>
+        <p>{{ entry.body }}</p>
+      </li>
+    {% else %}
+      <li>No messages yet. Say hello!</li>
+    {% endfor %}
+  </ol>
+
+  <form
+    class="item-form"
+    method="post"
+    action="{{ url_for('messages.conversation',
+                       conversation_id=conversation.id) }}">
+
+    <input type="hidden"
+           name="csrf_token"
+           value="{{ auth_csrf_token() }}">
+
+    <div class="form-field">
+      <label for="body">Your message</label>
+      <textarea id="body"
+                name="body"
+                rows="4"
+                maxlength="2000"
+                required></textarea>
+    </div>
+
+    <button class="primary-button" type="submit">
+      Send message
+    </button>
+  </form>
+{% endblock %}
